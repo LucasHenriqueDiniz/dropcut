@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', 'Inter', sans-serif;
+  background: #07080f;
+  color: #e5e7eb;
+}
+
+#app {
+  min-height: 100vh;
+}
