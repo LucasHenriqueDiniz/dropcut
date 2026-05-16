@@ -1,0 +1,2 @@
+src-tauri/ffmpeg-x86_64-pc-windows-msvc.exe filter=lfs diff=lfs merge=lfs -text
+src-tauri/ffprobe-x86_64-pc-windows-msvc.exe filter=lfs diff=lfs merge=lfs -text
