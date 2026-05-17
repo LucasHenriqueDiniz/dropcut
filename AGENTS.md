@@ -204,6 +204,29 @@ Do not add heavy dependencies for simple helpers.
 
 ---
 
+## Release rules
+
+This project publishes Windows builds through GitHub Actions.
+
+Use `.github/workflows/release.yml` for releases instead of relying on a local `gh` installation.
+
+Release flow:
+
+1. commit and push the code for the release;
+2. ensure the `Release` workflow already exists on `master` before creating a new tag;
+3. create and push a version tag like `v0.1.0`;
+4. GitHub Actions builds the Tauri app on Windows and creates/uploads the GitHub Release assets.
+
+Important:
+
+- GitHub does not run a newly added workflow retroactively for tags that were pushed before the workflow existed.
+- If a tag already exists, run the `Release` workflow manually from GitHub Actions using `workflow_dispatch` and the existing tag.
+- Do not delete, move, or force-update release tags unless the user explicitly requests it.
+- The release workflow depends on Git LFS assets, so keep `git lfs pull` in the workflow.
+- Current builds are not code-signed; release notes should mention the possible Windows SmartScreen warning.
+
+---
+
 ## File and process safety
 
 Never implement generic user-controlled shell execution.
