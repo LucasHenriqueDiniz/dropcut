@@ -11,13 +11,14 @@ import { ProgressDialog } from '../../components/video/ProgressDialog';
 import { type OutputFormat } from '../../lib/presets';
 import { usePresets } from '../../lib/PresetProvider';
 import { useEditorSession } from '../../lib/EditorSessionProvider';
-import { generateVideoThumbnails, openExportFolder, probeVideo, startEncode, listenToEncodeProgress } from '../../lib/tauri';
+import { generateVideoThumbnails, getFileSize, openExportFolder, probeVideo, startEncode, listenToEncodeProgress } from '../../lib/tauri';
 import { FolderOpen, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { Link } from 'react-router-dom';
 import { formatSeconds } from '../../lib/format';
 import { Toggle } from '../../components/ui/Toggle';
 import { Select } from '../../components/ui/Select';
+import { isAcceptedVideoPath, unsupportedVideoMessage } from '../../lib/videoFiles';
 
 type AppSettings = {
   default_encoder: string;
@@ -56,14 +57,18 @@ export function EditorPage() {
   const [progress, setProgress] = useState({ open: false, status: 'probing', value: 0 });
   const [lastOutputPath, setLastOutputPath] = useState<string | null>(null);
   const [lastSuccessfulOutputPath, setLastSuccessfulOutputPath] = useState<string | null>(null);
+  const [lastOutputSizeBytes, setLastOutputSizeBytes] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewSeekRef = useRef({ time: 0, timer: 0 });
   const settingsRef = useRef<AppSettings | null>(null);
   const lastOutputPathRef = useRef<string | null>(null);
   const autoOpenedPathRef = useRef<string | null>(null);
+  const lastVolumeBeforeMuteRef = useRef(1);
 
   const videoSrc = useMemo(() => {
     if (!metadata) return undefined;
@@ -104,6 +109,11 @@ export function EditorPage() {
       const shouldAutoOpen = settingsRef.current?.auto_open_output_folder;
       if (outputPath && payload.status.toLowerCase().includes('done')) {
         setLastSuccessfulOutputPath(outputPath);
+        getFileSize(outputPath).then((sizeBytes) => {
+          setLastOutputSizeBytes(sizeBytes);
+        }).catch(() => {
+          setLastOutputSizeBytes(null);
+        });
       }
       if (outputPath && shouldAutoOpen && payload.status.toLowerCase().includes('done') && autoOpenedPathRef.current !== outputPath) {
         autoOpenedPathRef.current = outputPath;
@@ -121,6 +131,14 @@ export function EditorPage() {
       if (previewSeekRef.current.timer) window.clearTimeout(previewSeekRef.current.timer);
     };
   }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.volume = Math.min(Math.max(volume, 0), 1);
+    video.muted = isMuted || volume <= 0;
+  }, [isMuted, volume, metadata?.path]);
 
   useEffect(() => {
     if (!videoSrc || !metadata) {
@@ -208,6 +226,49 @@ export function EditorPage() {
     }
   };
 
+  const handleVolumeChange = (nextVolume: number) => {
+    const video = videoRef.current;
+    const clamped = Math.min(Math.max(nextVolume, 0), 1);
+
+    setVolume(clamped);
+
+    if (clamped <= 0) {
+      setIsMuted(true);
+    } else {
+      lastVolumeBeforeMuteRef.current = clamped;
+      setIsMuted(false);
+    }
+
+    if (video) {
+      video.volume = clamped;
+      video.muted = clamped <= 0;
+    }
+  };
+
+  const toggleMute = () => {
+    const video = videoRef.current;
+
+    if (isMuted || volume <= 0) {
+      const restored = Math.max(lastVolumeBeforeMuteRef.current, 0.05);
+      setVolume(restored);
+      setIsMuted(false);
+      if (video) {
+        video.volume = restored;
+        video.muted = false;
+      }
+      return;
+    }
+
+    if (volume > 0) {
+      lastVolumeBeforeMuteRef.current = volume;
+    }
+
+    setIsMuted(true);
+    if (video) {
+      video.muted = true;
+    }
+  };
+
   const handleStartChange = (value: number) => {
     const next = Math.min(value, Math.max(end - 0.5, 0));
     setStart(next);
@@ -221,6 +282,11 @@ export function EditorPage() {
 
   const handleSelectVideo = async (path: string) => {
     setErrorMessage(null);
+    if (!isAcceptedVideoPath(path)) {
+      setErrorMessage(unsupportedVideoMessage());
+      return;
+    }
+
     setIsProbing(true);
     try {
       const meta = await probeVideo(path);
@@ -228,6 +294,10 @@ export function EditorPage() {
       setStart(0);
       setEnd(meta.duration_seconds);
       setCurrentTime(0);
+      const defaultVolume = 1;
+      setVolume(defaultVolume);
+      setIsMuted(false);
+      lastVolumeBeforeMuteRef.current = defaultVolume;
       setThumbnails([]);
       setThumbnailCacheKey(null);
     } catch (e) {
@@ -283,6 +353,7 @@ export function EditorPage() {
       if (!outputPath) return;
 
       setLastOutputPath(outputPath);
+      setLastOutputSizeBytes(null);
       lastOutputPathRef.current = outputPath;
       autoOpenedPathRef.current = null;
       setProgress({ open: true, status: 'Encoding...', value: 0 });
@@ -461,12 +532,17 @@ export function EditorPage() {
                 end={end}
                 currentTime={currentTime}
                 isPlaying={isPlaying}
+                hasAudio={metadata.has_audio}
+                volume={volume}
+                isMuted={isMuted}
                 thumbnails={thumbnails}
                 onStartChange={handleStartChange}
                 onEndChange={handleEndChange}
                 onSeek={seekTo}
                 onPreviewSeek={previewSeekTo}
                 onPlayPause={togglePlay}
+                onVolumeChange={handleVolumeChange}
+                onToggleMute={toggleMute}
               />
           </div>
         )}
@@ -477,6 +553,8 @@ export function EditorPage() {
         status={progress.status as any} 
         progress={progress.value} 
         outputPath={lastOutputPath}
+        inputSizeBytes={metadata?.size_bytes ?? null}
+        outputSizeBytes={lastOutputSizeBytes}
         onOpenFolder={() => {
           if (lastOutputPath) openExportFolder(lastOutputPath).catch(console.error);
         }}

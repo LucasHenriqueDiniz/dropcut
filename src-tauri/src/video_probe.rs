@@ -7,6 +7,7 @@ use tokio::time::{timeout, Duration};
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+const ACCEPTED_VIDEO_EXTENSIONS: &[&str] = &["mp4", "mov", "mkv", "webm", "avi"];
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct VideoMetadata {
@@ -44,8 +45,24 @@ struct ProbeFormat {
 }
 
 pub async fn probe_video(input_path: &str) -> Result<VideoMetadata> {
-    if !Path::new(input_path).exists() {
+    let path = Path::new(input_path);
+
+    if !path.exists() {
         return Err(DropCutError::FileNotFound(input_path.to_string()));
+    }
+
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase());
+
+    if !extension
+        .as_deref()
+        .is_some_and(|value| ACCEPTED_VIDEO_EXTENSIONS.contains(&value))
+    {
+        return Err(DropCutError::Message(
+            "Unsupported file. Drop a video (MP4, MOV, MKV, WEBM, AVI).".to_string(),
+        ));
     }
 
     let ffprobe = resolve_ffprobe_path().ok_or(DropCutError::FfprobeNotFound)?;
@@ -96,6 +113,11 @@ pub async fn probe_video(input_path: &str) -> Result<VideoMetadata> {
         .streams
         .iter()
         .find(|s| s.codec_type.as_deref() == Some("video"));
+    if video_stream.is_none() {
+        return Err(DropCutError::Message(
+            "Unsupported file. The selected file does not contain a video stream.".to_string(),
+        ));
+    }
     let audio_stream = parsed
         .streams
         .iter()
@@ -121,7 +143,7 @@ pub async fn probe_video(input_path: &str) -> Result<VideoMetadata> {
         })
         .unwrap_or(0.0);
 
-    let file_name = Path::new(input_path)
+    let file_name = path
         .file_name()
         .and_then(|v| v.to_str())
         .unwrap_or_default()

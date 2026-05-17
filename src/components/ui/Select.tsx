@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 type SelectOption<T extends string | number> = {
   value: T;
   label: string;
   description?: string;
+  icon?: LucideIcon;
 };
 
 type SelectProps<T extends string | number> = {
@@ -38,7 +40,7 @@ export function Select<T extends string | number>({ value, options, onChange, cl
         onClick={() => setOpen((value) => !value)}
       >
         <span className="min-w-0">
-          <span className="block truncate font-medium">{selected?.label ?? 'Select'}</span>
+          <span className="flex items-center gap-1.5 truncate font-medium">{selected?.icon ? <selected.icon size={13} className="shrink-0 text-[#4fc3a1]" /> : null}<span className="truncate">{selected?.label ?? 'Select'}</span></span>
           {selected?.description && <span className="mt-0.5 block truncate text-[10px] text-white/35">{selected.description}</span>}
         </span>
         <ChevronDown size={14} className={`shrink-0 text-white/35 transition ${open ? 'rotate-180 text-[#4fc3a1]' : ''}`} />
@@ -59,7 +61,7 @@ export function Select<T extends string | number>({ value, options, onChange, cl
                 }}
               >
                 <span className="min-w-0">
-                  <span className="block truncate font-medium">{option.label}</span>
+                  <span className="flex items-center gap-1.5 truncate font-medium">{option.icon ? <option.icon size={13} className="shrink-0 text-[#4fc3a1]" /> : null}<span className="truncate">{option.label}</span></span>
                   {option.description && <span className="mt-0.5 block truncate text-[10px] text-white/35">{option.description}</span>}
                 </span>
                 {active && <Check size={13} className="shrink-0 text-[#4fc3a1]" />}

@@ -252,14 +252,25 @@ pub fn open_external_link(kind: String) -> Result<(), String> {
         _ => return Err("Unsupported link target".to_string()),
     };
 
-    let mut command = Command::new("explorer.exe");
-    command.arg(url);
+    let mut command = Command::new("cmd.exe");
+    command.args(["/C", "start", "", url]);
 
     #[cfg(windows)]
     command.creation_flags(CREATE_NO_WINDOW);
 
     command.spawn().map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[tauri::command]
+pub fn get_file_size(path: String) -> Result<u64, String> {
+    let file_path = Path::new(&path);
+    if !file_path.exists() || !file_path.is_file() {
+        return Err("File does not exist".to_string());
+    }
+    fs::metadata(file_path)
+        .map(|metadata| metadata.len())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

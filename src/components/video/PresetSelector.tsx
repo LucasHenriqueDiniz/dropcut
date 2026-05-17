@@ -57,8 +57,8 @@ export function PresetSelector({ value, presets, onChange, onToggleVisible }: Pr
             <div className="space-y-2">
               {presets.map((preset) => (
                 <label key={preset.id} className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm text-slate-300">
-                  <span>
-                    <span className="font-semibold text-white">{preset.label}</span>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-1.5 font-semibold text-white"><span className="truncate">{preset.label}</span></span>
                     <span className="ml-2 text-xs text-slate-500">{preset.description}</span>
                   </span>
                   <input type="checkbox" checked={preset.visible} onChange={() => onToggleVisible(preset.id)} />

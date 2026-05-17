@@ -82,7 +82,8 @@ pub fn run(args: Vec<String>) {
             commands::cleanup_user_data,
             commands::check_health,
             commands::open_export_folder,
-            commands::open_external_link
+            commands::open_external_link,
+            commands::get_file_size
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

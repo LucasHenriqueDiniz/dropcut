@@ -1,6 +1,6 @@
 import { useRef, useState, type PointerEvent } from 'react';
 import { formatSeconds } from '../../lib/format';
-import { Pause, Play, SkipBack, SkipForward } from 'lucide-react';
+import { Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 
 type DragTarget = 'start' | 'end' | 'range' | 'playhead' | null;
 
@@ -10,17 +10,22 @@ type Props = {
   end: number;
   currentTime: number;
   isPlaying: boolean;
+  hasAudio: boolean;
+  volume: number;
+  isMuted: boolean;
   thumbnails: string[];
   onStartChange: (value: number) => void;
   onEndChange: (value: number) => void;
   onSeek: (value: number) => void;
   onPreviewSeek: (value: number) => void;
   onPlayPause: () => void;
+  onVolumeChange: (value: number) => void;
+  onToggleMute: () => void;
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
-export function TimelineTrimControl({ duration, start, end, currentTime, isPlaying, thumbnails, onStartChange, onEndChange, onSeek, onPreviewSeek, onPlayPause }: Props) {
+export function TimelineTrimControl({ duration, start, end, currentTime, isPlaying, hasAudio, volume, isMuted, thumbnails, onStartChange, onEndChange, onSeek, onPreviewSeek, onPlayPause, onVolumeChange, onToggleMute }: Props) {
   const trackRef = useRef<HTMLDivElement>(null);
   const rangeOffsetRef = useRef(0);
   const scrubTimeRef = useRef<number | null>(null);
@@ -34,6 +39,8 @@ export function TimelineTrimControl({ duration, start, end, currentTime, isPlayi
   const displayTime = scrubTime ?? currentTime;
   const currentPct = clamp((displayTime / safeDuration) * 100, 0, 100);
   const markers = Array.from({ length: 7 }, (_, index) => (safeDuration / 6) * index);
+  const clampedVolume = clamp(volume, 0, 1);
+  const volumePercent = Math.round(clampedVolume * 100);
 
   const getTimeFromPointer = (event: PointerEvent<HTMLDivElement>) => {
     const rect = trackRef.current?.getBoundingClientRect();
@@ -125,6 +132,30 @@ export function TimelineTrimControl({ duration, start, end, currentTime, isPlayi
         <div className="mx-1 h-3.5 w-px bg-white/[0.08]" />
         <div className="ml-auto font-mono text-[11px] text-white/45">
           <strong className="font-medium text-white">{formatSeconds(displayTime)}</strong> / {formatSeconds(safeDuration)}
+        </div>
+        <div className="mx-1 h-3.5 w-px bg-white/[0.08]" />
+        <div className="ml-1 flex items-center gap-1.5">
+          <button
+            type="button"
+            disabled={!hasAudio}
+            className="grid size-7 place-items-center rounded-md border border-white/[0.09] bg-white/[0.05] text-white/70 transition enabled:hover:bg-white/10 enabled:hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            onClick={onToggleMute}
+            aria-label={isMuted || volumePercent === 0 ? 'Unmute video' : 'Mute video'}
+          >
+            {isMuted || volumePercent === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            disabled={!hasAudio}
+            value={volumePercent}
+            onChange={(event) => onVolumeChange(Number(event.currentTarget.value) / 100)}
+            aria-label="Video audio volume"
+            className="h-1.5 w-24 accent-[#4fc3a1] disabled:cursor-not-allowed"
+          />
+          <span className="w-[62px] text-[10px] text-white/35">{hasAudio ? `Audio ${volumePercent}%` : 'No audio'}</span>
         </div>
         <div className="mx-1 h-3.5 w-px bg-white/[0.08]" />
         <div className="hidden text-[10px] text-white/30 md:block">Range <span className="text-white/50">{formatSeconds(start)} - {formatSeconds(end)}</span></div>

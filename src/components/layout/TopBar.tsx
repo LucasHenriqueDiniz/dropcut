@@ -1,15 +1,15 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { NavLink } from 'react-router-dom';
-import { HandHeart, Minus, Square, X } from 'lucide-react';
+import { Clapperboard, HandHeart, History, Minus, Settings, SlidersHorizontal, Square, X } from 'lucide-react';
 import { openExternalLink } from '../../lib/tauri';
 
 const appWindow = getCurrentWindow();
 
 const navItems = [
-  { to: '/', label: 'Workspace' },
-  { to: '/presets', label: 'Presets' },
-  { to: '/settings', label: 'Settings' },
-  { to: '/history', label: 'History' },
+  { to: '/', label: 'Workspace', icon: Clapperboard },
+  { to: '/presets', label: 'Presets', icon: SlidersHorizontal },
+  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/history', label: 'History', icon: History },
 ];
 
 export function TopBar() {
@@ -19,14 +19,16 @@ export function TopBar() {
         <div className="grid size-6 place-items-center overflow-hidden rounded-md">
           <img src="/icons/32x32.png" alt="" className="size-4" draggable={false} />
         </div>
-        <div className="ml-2 hidden items-center gap-1 text-xs text-slate-500 md:flex">
+        <div className="ml-2 flex items-center gap-1 text-xs text-slate-500">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
-              className={({ isActive }) => `rounded-md px-3 py-1 transition ${isActive ? 'border border-white/10 bg-white/5 font-semibold text-white' : 'hover:bg-white/5 hover:text-slate-200'}`}
+              title={item.label}
+              className={({ isActive }) => `inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 transition md:px-3 md:py-1 ${isActive ? 'border border-white/10 bg-white/5 font-semibold text-white' : 'hover:bg-white/5 hover:text-slate-200'}`}
             >
-              {item.label}
+              <item.icon size={14} className="shrink-0" />
+              <span className="hidden md:inline">{item.label}</span>
             </NavLink>
           ))}
         </div>

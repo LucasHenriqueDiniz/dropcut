@@ -43,6 +43,7 @@ export const installContextMenu = (presets?: ClipPreset[]) => invoke<boolean>('i
 export const uninstallContextMenu = () => invoke<boolean>('uninstall_context_menu');
 export const isContextMenuInstalled = () => invoke<boolean>('is_context_menu_installed');
 export const openExportFolder = (outputPath: string) => invoke<void>('open_export_folder', { outputPath });
+export const getFileSize = (path: string) => invoke<number>('get_file_size', { path });
 export const loadHistory = () => invoke<HistoryEntry[]>('load_history');
 export const clearHistory = () => invoke<void>('clear_history');
 export const openExternalLink = (kind: 'support' | 'github') => invoke<void>('open_external_link', { kind });

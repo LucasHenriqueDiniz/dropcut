@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '../ui/Button';
 import { open } from '@tauri-apps/plugin-dialog';
 import { UploadCloud, Video } from 'lucide-react';
+import { ACCEPTED_VIDEO_DESCRIPTION, ACCEPTED_VIDEO_EXTENSIONS, isAcceptedVideoPath, unsupportedVideoMessage } from '../../lib/videoFiles';
 
 type Props = { onSelect: (path: string) => void };
 
@@ -12,7 +13,7 @@ export function VideoDropzone({ onSelect }: Props) {
   const handleOpen = async () => {
     const selected = await open({
       multiple: false,
-      filters: [{ name: 'Video', extensions: ['mp4', 'mov', 'mkv', 'avi'] }]
+      filters: [{ name: 'Video', extensions: [...ACCEPTED_VIDEO_EXTENSIONS] }]
     });
     if (typeof selected === 'string') {
       onSelect(selected);
@@ -34,6 +35,13 @@ export function VideoDropzone({ onSelect }: Props) {
     const file = e.dataTransfer.files[0];
     if (file) {
       const path = (file as File & { path?: string }).path;
+      const candidate = path ?? file.name;
+
+      if (!isAcceptedVideoPath(candidate)) {
+        setDropMessage(unsupportedVideoMessage());
+        return;
+      }
+
       if (path) {
         onSelect(path);
         return;
@@ -63,7 +71,7 @@ export function VideoDropzone({ onSelect }: Props) {
           {isDragging ? 'Drop to load video' : 'Drop video anywhere'}
         </p>
         <p className="max-w-sm text-[11px] text-white/35">
-          MP4, MOV, MKV, WEBM and AVI. Drag a video onto the workspace or use the picker below.
+          {ACCEPTED_VIDEO_DESCRIPTION}. Drag a video onto the workspace or use the picker below.
         </p>
       </div>
 
