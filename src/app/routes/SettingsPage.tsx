@@ -119,7 +119,7 @@ export function SettingsPage() {
 
           <div className="h-px bg-white/[0.07]" />
           <div className="mt-auto flex flex-col gap-2">
-            <Button onClick={() => openExternalLink('support').catch(console.error)} variant="ghost" className="flex items-center justify-center gap-2 border border-white/10 bg-white/[0.04] text-xs"><HandHeart size={14} /> Support DropCut</Button>
+            <Button onClick={() => openExternalLink('donate').catch(console.error)} variant="ghost" className="flex items-center justify-center gap-2 border border-white/10 bg-white/[0.04] text-xs"><HandHeart size={14} /> Support DropCut</Button>
             <Button onClick={() => openExternalLink('github').catch(console.error)} variant="ghost" className="flex items-center justify-center gap-2 border border-white/10 bg-white/[0.04] text-xs"><ExternalLink size={14} /> GitHub repo</Button>
             <Button onClick={() => { setSettings(DEFAULT_SETTINGS); setStatus('Defaults restored. Save to persist them.'); }} variant="ghost" className="flex items-center justify-center gap-2 border border-white/10 bg-white/[0.04] text-xs"><RotateCcw size={14} /> Reset</Button>
             <Button onClick={handleSave} className="flex items-center justify-center gap-2 bg-[#1d9e75] text-xs hover:bg-[#188866]"><Save size={14} /> Save</Button>

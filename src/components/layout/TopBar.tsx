@@ -39,7 +39,7 @@ export function TopBar() {
           type="button"
           aria-label="Support DropCut"
           className="mr-1 hidden h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2.5 text-[11px] text-slate-300 transition hover:bg-white/10 hover:text-white md:inline-flex"
-          onClick={() => openExternalLink('support').catch(console.error)}
+          onClick={() => openExternalLink('donate').catch(console.error)}
         >
           <HandHeart size={13} /> Support
         </button>

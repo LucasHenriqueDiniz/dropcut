@@ -247,7 +247,7 @@ pub fn open_export_folder(output_path: String) -> Result<(), String> {
 #[tauri::command]
 pub fn open_external_link(kind: String) -> Result<(), String> {
     let url = match kind.as_str() {
-        "support" => "https://lucashdo.com/donate?project=DropCut",
+        "donate" => "https://lucashdo.com/donate?project=DropCut",
         "github" => "https://github.com/LucasHenriqueDiniz/dropcut",
         _ => return Err("Unsupported link target".to_string()),
     };

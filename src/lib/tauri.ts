@@ -46,4 +46,4 @@ export const openExportFolder = (outputPath: string) => invoke<void>('open_expor
 export const getFileSize = (path: string) => invoke<number>('get_file_size', { path });
 export const loadHistory = () => invoke<HistoryEntry[]>('load_history');
 export const clearHistory = () => invoke<void>('clear_history');
-export const openExternalLink = (kind: 'support' | 'github') => invoke<void>('open_external_link', { kind });
+export const openExternalLink = (kind: 'donate' | 'github') => invoke<void>('open_external_link', { kind });
