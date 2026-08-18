@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/dropcut-banner.png" alt="DropCut" width="100%" />
+  <img src=".github/banner.png" alt="DropCut" width="100%" />
 </p>
 
 # DropCut
