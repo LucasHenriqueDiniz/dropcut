@@ -21,7 +21,7 @@ Use este documento como regra prática para decidir onde mexer e como não quebr
 
 ```txt
 project-root/
-  AGENTS.md
+  CLAUDE.md
   package.json
   vite.config.ts
   src/

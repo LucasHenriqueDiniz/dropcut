@@ -10,6 +10,9 @@ const VIDEO_ASSOCIATION_BASES: [&str; 7] = [
     "Software\\Classes\\SystemFileAssociations\\.wmv\\shell",
 ];
 
+// "ClipShrink" was this product's old name before it was rebranded to DropCut.
+// These entries stay here so uninstall/reinstall also cleans up registry keys
+// left behind by installs that predate the rename.
 const KNOWN_CONTEXT_KEYS: [&str; 11] = [
     "DropCut.Compress.discord_free",
     "DropCut.Compress.discord_nitro",

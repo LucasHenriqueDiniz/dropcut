@@ -24,7 +24,11 @@
     "core:webview:default",
     {
       "identifier": "fs:default",
-      "allow": [{ "path": "**" }]
+      "allow": [
+        { "path": "$APPCONFIG/**" },
+        { "path": "$APPLOCALDATA/**" },
+        { "path": "$TEMP/**" }
+      ]
     }
   ]
 }

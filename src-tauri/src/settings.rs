@@ -16,6 +16,7 @@ pub struct AppSettings {
     pub auto_open_output_folder: bool,
     pub output_filename_template: String,
     pub timeline_thumbnail_count: u8,
+    pub locale: String,
 }
 
 impl Default for AppSettings {
@@ -29,6 +30,7 @@ impl Default for AppSettings {
             auto_open_output_folder: false,
             output_filename_template: "{target}mb_{name}".to_string(),
             timeline_thumbnail_count: 12,
+            locale: "en".to_string(),
         }
     }
 }
@@ -37,7 +39,7 @@ pub fn get_settings_path(app_handle: &tauri::AppHandle) -> PathBuf {
     app_handle
         .path()
         .app_config_dir()
-        .expect("Failed to get config dir")
+        .unwrap_or_else(|_| config_dir_from_env())
         .join("settings.json")
 }
 

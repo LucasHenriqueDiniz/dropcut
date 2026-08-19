@@ -146,7 +146,7 @@ pub fn run_encode(app: AppHandle, request: EncodeRequest, _meta: VideoMetadata) 
         // Too long: lower quality aggressively
         // We can't easily change the request.keep_audio here, but we can override bitrate/res
         bitrate = 120;
-        resolution = (640, 360);
+        resolution = dimensions_for_format(&request.format, 360);
         encoder = "libx264".to_string();
     }
 
@@ -199,7 +199,7 @@ pub fn run_encode_blocking_with_control(
 
     if bitrate < 120 {
         bitrate = 120;
-        resolution = (640, 360);
+        resolution = dimensions_for_format(&request.format, 360);
         encoder = "libx264".to_string();
     }
 
@@ -232,115 +232,103 @@ fn execute_ffmpeg_pipeline(app: &AppHandle, job: EncodeJob) -> Result<()> {
     let request = job.request;
     let output_path = job.output_path;
 
-    let two_pass = false;
+    let params = EncodeParams {
+        input_path: request.input_path.clone(),
+        output_path: output_path.clone(),
+        start_seconds: request.start_seconds,
+        end_seconds: request.end_seconds,
+        bitrate_kbps: job.bitrate,
+        audio_kbps: job.audio_kbps,
+        resolution: job.resolution,
+        encoder: job.encoder.clone(),
+        max_fps: request.max_fps,
+        speed_quality: request.speed_quality,
+    };
 
-    for pass in 1..=if two_pass { 2 } else { 1 } {
-        let params = EncodeParams {
-            input_path: request.input_path.clone(),
-            output_path: output_path.clone(),
-            start_seconds: request.start_seconds,
-            end_seconds: request.end_seconds,
-            bitrate_kbps: job.bitrate,
-            audio_kbps: job.audio_kbps,
-            resolution: job.resolution,
-            encoder: job.encoder.clone(),
-            max_fps: request.max_fps,
-            speed_quality: request.speed_quality,
-        };
+    let args = ffmpeg::build_encode_command(&params);
+    let status_text = "Encoding";
 
-        let args = ffmpeg::build_encode_command(&params);
-        let status_text = if two_pass {
-            if pass == 1 {
-                "Pass 1/2 (Analyzing)"
-            } else {
-                "Pass 2/2 (Encoding)"
-            }
-        } else {
-            "Encoding"
-        };
+    emit_encode_progress(app, status_text, 0.0);
 
-        emit_encode_progress(app, status_text, 0.0);
+    let mut command = Command::new(&ffmpeg);
+    command
+        .args(&args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
-        let mut command = Command::new(&ffmpeg);
-        command
-            .args(&args)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+    #[cfg(windows)]
+    command.creation_flags(CREATE_NO_WINDOW);
 
-        #[cfg(windows)]
-        command.creation_flags(CREATE_NO_WINDOW);
+    let mut child = command.spawn().map_err(|e| {
+        crate::errors::DropCutError::Message(format!("Failed to spawn FFmpeg: {}", e))
+    })?;
 
-        let mut child = command.spawn().map_err(|e| {
-            crate::errors::DropCutError::Message(format!("Failed to spawn FFmpeg: {}", e))
-        })?;
+    if let Some(ctrl) = &job.control {
+        if let Ok(mut child_pid) = ctrl.child_pid.lock() {
+            *child_pid = Some(child.id());
+        }
+    }
+
+    let stdout = child.stdout.take().ok_or_else(|| {
+        crate::errors::DropCutError::Message("Failed to capture FFmpeg stdout".to_string())
+    })?;
+    let stderr = child.stderr.take().ok_or_else(|| {
+        crate::errors::DropCutError::Message("Failed to capture FFmpeg stderr".to_string())
+    })?;
+    let full_stderr = Arc::new(Mutex::new(String::new()));
+    let stderr_buffer = Arc::clone(&full_stderr);
+    let stderr_thread = thread::spawn(move || {
+        let mut reader = BufReader::new(stderr);
+        let mut buffer = String::new();
+        let _ = reader.read_to_string(&mut buffer);
+        if let Ok(mut stderr) = stderr_buffer.lock() {
+            *stderr = buffer;
+        }
+    });
+
+    let reader = BufReader::new(stdout);
+    let total_sec = (request.end_seconds - request.start_seconds).max(0.001);
+
+    for line in reader.lines() {
+        let line = line.unwrap_or_default();
 
         if let Some(ctrl) = &job.control {
-            if let Ok(mut child_pid) = ctrl.child_pid.lock() {
-                *child_pid = Some(child.id());
+            if ctrl.cancel_requested.load(Ordering::Relaxed) {
+                let _ = child.kill();
+                return Err(crate::errors::DropCutError::Message(
+                    "Cancelled by user".to_string(),
+                ));
             }
         }
 
-        let stdout = child.stdout.take().ok_or_else(|| {
-            crate::errors::DropCutError::Message("Failed to capture FFmpeg stdout".to_string())
-        })?;
-        let stderr = child.stderr.take().ok_or_else(|| {
-            crate::errors::DropCutError::Message("Failed to capture FFmpeg stderr".to_string())
-        })?;
-        let full_stderr = Arc::new(Mutex::new(String::new()));
-        let stderr_buffer = Arc::clone(&full_stderr);
-        let stderr_thread = thread::spawn(move || {
-            let mut reader = BufReader::new(stderr);
-            let mut buffer = String::new();
-            let _ = reader.read_to_string(&mut buffer);
-            if let Ok(mut stderr) = stderr_buffer.lock() {
-                *stderr = buffer;
-            }
-        });
+        if let Some(current_sec) = parse_ffmpeg_progress_seconds(&line) {
+            let progress = (current_sec / total_sec * 100.0).clamp(0.0, 99.0) as f32;
+            emit_encode_progress(app, status_text, progress);
+        }
+    }
 
-        let reader = BufReader::new(stdout);
-        let total_sec = (request.end_seconds - request.start_seconds).max(0.001);
+    let status = child
+        .wait()
+        .map_err(|e| crate::errors::DropCutError::Message(format!("Wait failed: {}", e)))?;
+    let _ = stderr_thread.join();
 
-        for line in reader.lines() {
-            let line = line.unwrap_or_default();
-
-            if let Some(ctrl) = &job.control {
-                if ctrl.cancel_requested.load(Ordering::Relaxed) {
-                    let _ = child.kill();
-                    return Err(crate::errors::DropCutError::Message(
-                        "Cancelled by user".to_string(),
-                    ));
-                }
-            }
-
-            if let Some(current_sec) = parse_ffmpeg_progress_seconds(&line) {
-                let progress = (current_sec / total_sec * 100.0).clamp(0.0, 99.0) as f32;
-                emit_encode_progress(app, status_text, progress);
+    if !status.success() {
+        if let Some(ctrl) = &job.control {
+            if ctrl.cancel_requested.load(Ordering::Relaxed) {
+                return Err(crate::errors::DropCutError::Message(
+                    "Cancelled by user".to_string(),
+                ));
             }
         }
-
-        let status = child
-            .wait()
-            .map_err(|e| crate::errors::DropCutError::Message(format!("Wait failed: {}", e)))?;
-        let _ = stderr_thread.join();
-
-        if !status.success() {
-            if let Some(ctrl) = &job.control {
-                if ctrl.cancel_requested.load(Ordering::Relaxed) {
-                    return Err(crate::errors::DropCutError::Message(
-                        "Cancelled by user".to_string(),
-                    ));
-                }
-            }
-            let stderr = full_stderr
-                .lock()
-                .map(|value| value.clone())
-                .unwrap_or_else(|_| "Failed to read FFmpeg stderr".to_string());
-            return Err(crate::errors::DropCutError::Message(format!(
-                "FFmpeg failed with exit code {}. Stderr: {}",
-                status.code().unwrap_or(-1),
-                stderr
-            )));
-        }
+        let stderr = full_stderr
+            .lock()
+            .map(|value| value.clone())
+            .unwrap_or_else(|_| "Failed to read FFmpeg stderr".to_string());
+        return Err(crate::errors::DropCutError::Message(format!(
+            "FFmpeg failed with exit code {}. Stderr: {}",
+            status.code().unwrap_or(-1),
+            stderr
+        )));
     }
 
     if let Some(ctrl) = &job.control {

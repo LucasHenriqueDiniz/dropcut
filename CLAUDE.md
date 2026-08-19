@@ -1,6 +1,6 @@
-# AGENTS.md
+# CLAUDE.md
 
-Project instructions for OpenCode and other coding agents.
+Project instructions for Claude Code and other coding agents (OpenCode, Aider, etc.).
 
 ## Read first
 

@@ -58,6 +58,14 @@ pub fn run(args: Vec<String>) {
                 });
             } else if let Some(config) = app.config().app.windows.first() {
                 WebviewWindowBuilder::from_config(app, config)?.build()?;
+
+                let handle = app.app_handle().clone();
+                std::thread::spawn(move || {
+                    if matches!(context_menu::is_context_menu_installed(), Ok(false)) {
+                        let presets = presets::load_presets(&handle);
+                        let _ = context_menu::install_context_menu(&presets);
+                    }
+                });
             }
             Ok(())
         })

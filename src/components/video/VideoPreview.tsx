@@ -1,6 +1,7 @@
 import { forwardRef, useState } from 'react';
+import { useTranslation } from '../../lib/LocaleProvider';
 
-type Props = { 
+type Props = {
   src?: string; 
   onTimeUpdate?: (time: number) => void;
   onLoadedMetadata?: (duration: number) => void;
@@ -10,6 +11,7 @@ type Props = {
 
 export const VideoPreview = forwardRef<HTMLVideoElement, Props>(({ src, onTimeUpdate, onLoadedMetadata, onPlay, onPause }, ref) => {
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslation();
 
   if (!src) return <div className="h-full min-h-[320px] rounded-2xl bg-slate-900/70" />;
   
@@ -43,9 +45,9 @@ export const VideoPreview = forwardRef<HTMLVideoElement, Props>(({ src, onTimeUp
 
           console.error("Video load error:", err);
           setError(
-            err 
-              ? `Error ${err.code}: ${message || 'Media load rejected by LIRL safety check'}` 
-              : 'Unknown video load error'
+            err
+              ? t('preview.error', { code: err.code, message: message || t('preview.mediaRejected') })
+              : t('preview.unknownError')
           );
         }}
       />

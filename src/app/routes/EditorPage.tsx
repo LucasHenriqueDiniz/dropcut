@@ -12,13 +12,14 @@ import { type OutputFormat } from '../../lib/presets';
 import { usePresets } from '../../lib/PresetProvider';
 import { useEditorSession } from '../../lib/EditorSessionProvider';
 import { generateVideoThumbnails, getFileSize, openExportFolder, probeVideo, startEncode, listenToEncodeProgress } from '../../lib/tauri';
-import { FolderOpen, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { AlertTriangle, FolderOpen, Loader2, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { Link } from 'react-router-dom';
 import { formatSeconds } from '../../lib/format';
 import { Toggle } from '../../components/ui/Toggle';
 import { Select } from '../../components/ui/Select';
 import { isAcceptedVideoPath, unsupportedVideoMessage } from '../../lib/videoFiles';
+import { useTranslation } from '../../lib/LocaleProvider';
 
 type AppSettings = {
   default_encoder: string;
@@ -50,6 +51,7 @@ export function EditorPage() {
     defaultPresetApplied,
     setDefaultPresetApplied,
   } = useEditorSession();
+  const t = useTranslation();
   const [isProbing, setIsProbing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { presets } = usePresets();
@@ -280,10 +282,16 @@ export function EditorPage() {
     setEnd(next);
   };
 
+  useEffect(() => {
+    if (!errorMessage) return;
+    const timer = setTimeout(() => setErrorMessage(null), 4000);
+    return () => clearTimeout(timer);
+  }, [errorMessage]);
+
   const handleSelectVideo = async (path: string) => {
     setErrorMessage(null);
     if (!isAcceptedVideoPath(path)) {
-      setErrorMessage(unsupportedVideoMessage());
+      setErrorMessage(unsupportedVideoMessage(t));
       return;
     }
 
@@ -301,7 +309,7 @@ export function EditorPage() {
       setThumbnails([]);
       setThumbnailCacheKey(null);
     } catch (e) {
-      setErrorMessage(e instanceof Error ? e.message : 'Failed to load video');
+      setErrorMessage(e instanceof Error ? e.message : t('editor.failedToLoad'));
       console.error('Probe failed', e);
     } finally {
       setIsProbing(false);
@@ -388,8 +396,8 @@ export function EditorPage() {
         {isDraggingFile && (
           <div className="pointer-events-none absolute inset-3 z-30 grid place-items-center rounded-2xl border border-[#4fc3a1]/70 bg-[#1d9e75]/10 text-center backdrop-blur-sm">
             <div className="rounded-xl border border-white/10 bg-[#0a0d12]/85 px-7 py-5">
-              <p className="text-2xl font-semibold text-white">Drop to load video</p>
-              <p className="mt-2 text-sm text-[#4fc3a1]/80">DropCut will open the local file path from Windows.</p>
+              <p className="text-2xl font-semibold text-white">{t('editor.dropToLoad')}</p>
+              <p className="mt-2 text-sm text-[#4fc3a1]/80">{t('editor.dropToLoadDetail')}</p>
             </div>
           </div>
         )}
@@ -438,23 +446,23 @@ export function EditorPage() {
           <aside className="flex w-[230px] shrink-0 flex-col gap-3 border-l border-white/[0.07] bg-[#0a0d12] p-3">
             {metadata ? (
               <div>
-                <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-white/30">File info</p>
+                <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-white/30">{t('editor.fileInfo')}</p>
                 <div className="grid grid-cols-2 gap-1.5">
-                  <div className="rounded-md border border-white/[0.08] bg-white/[0.04] p-2"><p className="text-xs font-medium text-white">{metadata.height}p</p><p className="mt-0.5 text-[10px] text-white/35">Resolution</p></div>
-                  <div className="rounded-md border border-white/[0.08] bg-white/[0.04] p-2"><p className="text-xs font-medium text-white">{formatSeconds(metadata.duration_seconds)}</p><p className="mt-0.5 text-[10px] text-white/35">Duration</p></div>
-                  <div className="rounded-md border border-white/[0.08] bg-white/[0.04] p-2"><p className="truncate text-xs font-medium text-white">{metadata.video_codec || 'unknown'}</p><p className="mt-0.5 text-[10px] text-white/35">Codec</p></div>
-                  <div className="rounded-md border border-white/[0.08] bg-white/[0.04] p-2"><p className="text-xs font-medium text-white">{Math.round(metadata.fps || 0)}fps</p><p className="mt-0.5 text-[10px] text-white/35">FPS</p></div>
+                  <div className="rounded-md border border-white/[0.08] bg-white/[0.04] p-2"><p className="text-xs font-medium text-white">{metadata.height}p</p><p className="mt-0.5 text-[10px] text-white/35">{t('editor.resolution')}</p></div>
+                  <div className="rounded-md border border-white/[0.08] bg-white/[0.04] p-2"><p className="text-xs font-medium text-white">{formatSeconds(metadata.duration_seconds)}</p><p className="mt-0.5 text-[10px] text-white/35">{t('editor.duration')}</p></div>
+                  <div className="rounded-md border border-white/[0.08] bg-white/[0.04] p-2"><p className="truncate text-xs font-medium text-white">{metadata.video_codec || t('editor.unknown')}</p><p className="mt-0.5 text-[10px] text-white/35">{t('editor.codec')}</p></div>
+                  <div className="rounded-md border border-white/[0.08] bg-white/[0.04] p-2"><p className="text-xs font-medium text-white">{Math.round(metadata.fps || 0)}fps</p><p className="mt-0.5 text-[10px] text-white/35">{t('editor.fps')}</p></div>
                 </div>
               </div>
             ) : (
               <div className="rounded-lg border border-white/[0.07] bg-white/[0.03] p-3 text-xs text-white/40">
-                Load a video to unlock trimming, preview and export.
+                {t('editor.loadVideoHint')}
               </div>
             )}
 
             <div className="h-px bg-white/[0.07]" />
             <div>
-              <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-white/30">Target size</p>
+              <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-white/30">{t('editor.targetSize')}</p>
               <Select
                 value={selectedPreset?.id ?? ''}
                 options={visiblePresetOptions}
@@ -466,16 +474,16 @@ export function EditorPage() {
                 }}
               />
               <Link to="/presets" className="flex w-full items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] text-white/60 transition hover:text-white">
-                <SlidersHorizontal size={13} /> Manage presets
+                <SlidersHorizontal size={13} /> {t('editor.managePresets')}
               </Link>
               {selectedPreset && (
                 <div className="mt-2 rounded-lg border border-white/[0.08] bg-white/[0.035] p-2.5">
-                  <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-white/30">Preset details</p>
+                  <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-white/30">{t('editor.presetDetails')}</p>
                   <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-                    <div className="rounded-md bg-black/20 p-2"><p className="font-medium text-white">{selectedPreset.maxResolution}p</p><p className="mt-0.5 text-white/35">Max res</p></div>
-                    <div className="rounded-md bg-black/20 p-2"><p className="font-medium text-white">{selectedPreset.maxFps}fps</p><p className="mt-0.5 text-white/35">Frame cap</p></div>
-                    <div className="rounded-md bg-black/20 p-2"><p className="font-medium text-white">{selectedPreset.audioKbps > 0 ? `${selectedPreset.audioKbps}k` : 'Off'}</p><p className="mt-0.5 text-white/35">Audio</p></div>
-                    <div className="rounded-md bg-black/20 p-2"><p className="font-medium text-white">{selectedPreset.defaultEncoder === 'gpu_fast' ? 'GPU' : selectedPreset.defaultEncoder === 'cpu_quality' ? 'CPU' : 'Auto'}</p><p className="mt-0.5 text-white/35">Encoder</p></div>
+                    <div className="rounded-md bg-black/20 p-2"><p className="font-medium text-white">{selectedPreset.maxResolution}p</p><p className="mt-0.5 text-white/35">{t('editor.maxRes')}</p></div>
+                    <div className="rounded-md bg-black/20 p-2"><p className="font-medium text-white">{selectedPreset.maxFps}fps</p><p className="mt-0.5 text-white/35">{t('editor.frameCap')}</p></div>
+                    <div className="rounded-md bg-black/20 p-2"><p className="font-medium text-white">{selectedPreset.audioKbps > 0 ? `${selectedPreset.audioKbps}k` : t('editor.audioOff')}</p><p className="mt-0.5 text-white/35">{t('editor.audio')}</p></div>
+                    <div className="rounded-md bg-black/20 p-2"><p className="font-medium text-white">{selectedPreset.defaultEncoder === 'gpu_fast' ? 'GPU' : selectedPreset.defaultEncoder === 'cpu_quality' ? 'CPU' : t('settings.encoderAuto')}</p><p className="mt-0.5 text-white/35">{t('editor.encoder')}</p></div>
                   </div>
                 </div>
               )}
@@ -483,7 +491,7 @@ export function EditorPage() {
 
             <div className="h-px bg-white/[0.07]" />
             <div>
-              <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-white/30">Aspect ratio</p>
+              <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-white/30">{t('editor.aspectRatio')}</p>
               <div className="flex flex-wrap gap-1.5">
                 {formatModes.map((mode) => (
                   <button key={mode.id} type="button" onClick={() => setFormat(mode.id as OutputFormat)} className={`rounded-full border px-2.5 py-1 text-[10px] transition ${format === mode.id ? 'border-[#1d9e75] bg-[#4fc3a1]/15 text-[#4fc3a1]' : 'border-white/10 bg-white/[0.06] text-white/50 hover:text-white'}`}>
@@ -495,10 +503,10 @@ export function EditorPage() {
 
             <div className="mt-auto flex flex-col gap-3">
               <div className="flex items-center justify-between gap-2">
-                <div><p className="text-[11px] text-white">Keep audio</p><p className="text-[10px] text-white/35">Default export audio</p></div>
+                <div><p className="text-[11px] text-white">{t('editor.keepAudio')}</p><p className="text-[10px] text-white/35">{t('editor.keepAudioSubtitle')}</p></div>
                 <Toggle checked={settings?.keep_audio_default ?? true} onChange={(keep_audio_default) => setSettings((current) => current ? { ...current, keep_audio_default } : current)} />
               </div>
-              <ExportPanel label={selectedPreset?.label ?? 'preset'} disabled={!metadata || !selectedPreset} onExport={() => selectedPreset && handleExport(Math.ceil(selectedPreset.targetMiB))} />
+              <ExportPanel label={selectedPreset?.label ?? t('editor.presetFallback')} disabled={!metadata || !selectedPreset} onExport={() => selectedPreset && handleExport(Math.ceil(selectedPreset.targetMiB))} />
               {metadata && lastSuccessfulOutputPath && (
                 <div className="grid grid-cols-2 gap-1.5">
                   <button
@@ -506,14 +514,14 @@ export function EditorPage() {
                     onClick={() => selectedPreset && handleExport(Math.ceil(selectedPreset.targetMiB))}
                     className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-2 text-[11px] text-white/65 transition hover:text-white"
                   >
-                    <RotateCcw size={13} /> Re-export
+                    <RotateCcw size={13} /> {t('editor.reExport')}
                   </button>
                   <button
                     type="button"
                     onClick={() => openExportFolder(lastSuccessfulOutputPath).catch(console.error)}
                     className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-2 text-[11px] text-white/65 transition hover:text-white"
                   >
-                    <FolderOpen size={13} /> Open exported
+                    <FolderOpen size={13} /> {t('editor.openExported')}
                   </button>
                 </div>
               )}
@@ -521,8 +529,29 @@ export function EditorPage() {
           </aside>
         </div>
 
-        {isProbing && <p className="relative z-10 px-5 pb-2 text-sm text-blue-300">Probing video...</p>}
-        {errorMessage && <p className="relative z-10 px-5 pb-2 text-sm text-red-300">{errorMessage}</p>}
+        {(isProbing || errorMessage) && (
+          <div className="pointer-events-none absolute inset-x-0 top-4 z-30 flex justify-center px-4">
+            {errorMessage ? (
+              <div className="pointer-events-auto flex max-w-md items-start gap-2 rounded-lg border border-amber-300/20 bg-[#0a0d12]/95 px-3 py-2 text-xs leading-relaxed text-amber-200 shadow-lg backdrop-blur-sm">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-300" />
+                <p className="flex-1">{errorMessage}</p>
+                <button
+                  type="button"
+                  onClick={() => setErrorMessage(null)}
+                  className="shrink-0 text-amber-200/60 transition hover:text-amber-100"
+                  aria-label={t('common.dismiss')}
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ) : (
+              <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-white/10 bg-[#0a0d12]/95 px-3 py-2 text-xs text-blue-300 shadow-lg backdrop-blur-sm">
+                <Loader2 size={14} className="animate-spin" />
+                {t('editor.probing')}
+              </div>
+            )}
+          </div>
+        )}
 
         {metadata && (
           <div className="relative z-10 border-t border-white/[0.08] bg-[#0b0f15]">

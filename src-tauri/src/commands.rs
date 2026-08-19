@@ -249,6 +249,7 @@ pub fn open_external_link(kind: String) -> Result<(), String> {
     let url = match kind.as_str() {
         "donate" => "https://lucashdo.com/donate?project=DropCut",
         "github" => "https://github.com/LucasHenriqueDiniz/dropcut",
+        "releases" => "https://github.com/LucasHenriqueDiniz/dropcut/releases/latest",
         _ => return Err("Unsupported link target".to_string()),
     };
 

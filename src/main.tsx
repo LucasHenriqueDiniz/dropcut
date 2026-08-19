@@ -5,6 +5,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
 import { App } from './app/App';
 import { ProgressWindow } from './app/ProgressWindow';
+import { LocaleProvider } from './lib/LocaleProvider';
 import './styles/globals.css';
 
 const root = document.getElementById('app');
@@ -14,7 +15,9 @@ if (root) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
       {bootMode === 'progress' ? (
-        <ProgressWindow />
+        <LocaleProvider>
+          <ProgressWindow />
+        </LocaleProvider>
       ) : (
         <BrowserRouter>
           <App />

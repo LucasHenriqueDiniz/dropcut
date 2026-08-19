@@ -1,55 +1,7 @@
 !macro NSIS_HOOK_POSTINSTALL
-  ; Generic video association
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\video\shell\DropCut.Compress.discord_free" "" "Compress with DropCut (10 MB)"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\video\shell\DropCut.Compress.discord_free" "Icon" "$INSTDIR\dropcut.exe"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\video\shell\DropCut.Compress.discord_free\command" "" '"$INSTDIR\dropcut.exe" --background-compress --preset-id "discord-free" --input "%1"'
-
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\video\shell\DropCut.Compress.discord_nitro" "" "Compress with DropCut (50 MB)"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\video\shell\DropCut.Compress.discord_nitro" "Icon" "$INSTDIR\dropcut.exe"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\video\shell\DropCut.Compress.discord_nitro\command" "" '"$INSTDIR\dropcut.exe" --background-compress --preset-id "discord-nitro" --input "%1"'
-
-  ; Explicit video extensions (improves compatibility on some Windows installs)
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mp4\shell\DropCut.Compress.discord_free" "" "Compress with DropCut (10 MB)"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mp4\shell\DropCut.Compress.discord_free" "Icon" "$INSTDIR\dropcut.exe"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mp4\shell\DropCut.Compress.discord_free\command" "" '"$INSTDIR\dropcut.exe" --background-compress --preset-id "discord-free" --input "%1"'
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mp4\shell\DropCut.Compress.discord_nitro" "" "Compress with DropCut (50 MB)"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mp4\shell\DropCut.Compress.discord_nitro" "Icon" "$INSTDIR\dropcut.exe"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mp4\shell\DropCut.Compress.discord_nitro\command" "" '"$INSTDIR\dropcut.exe" --background-compress --preset-id "discord-nitro" --input "%1"'
-
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mkv\shell\DropCut.Compress.discord_free" "" "Compress with DropCut (10 MB)"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mkv\shell\DropCut.Compress.discord_free" "Icon" "$INSTDIR\dropcut.exe"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mkv\shell\DropCut.Compress.discord_free\command" "" '"$INSTDIR\dropcut.exe" --background-compress --preset-id "discord-free" --input "%1"'
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mkv\shell\DropCut.Compress.discord_nitro" "" "Compress with DropCut (50 MB)"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mkv\shell\DropCut.Compress.discord_nitro" "Icon" "$INSTDIR\dropcut.exe"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mkv\shell\DropCut.Compress.discord_nitro\command" "" '"$INSTDIR\dropcut.exe" --background-compress --preset-id "discord-nitro" --input "%1"'
-
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mov\shell\DropCut.Compress.discord_free" "" "Compress with DropCut (10 MB)"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mov\shell\DropCut.Compress.discord_free" "Icon" "$INSTDIR\dropcut.exe"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mov\shell\DropCut.Compress.discord_free\command" "" '"$INSTDIR\dropcut.exe" --background-compress --preset-id "discord-free" --input "%1"'
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mov\shell\DropCut.Compress.discord_nitro" "" "Compress with DropCut (50 MB)"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mov\shell\DropCut.Compress.discord_nitro" "Icon" "$INSTDIR\dropcut.exe"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mov\shell\DropCut.Compress.discord_nitro\command" "" '"$INSTDIR\dropcut.exe" --background-compress --preset-id "discord-nitro" --input "%1"'
-
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.webm\shell\DropCut.Compress.discord_free" "" "Compress with DropCut (10 MB)"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.webm\shell\DropCut.Compress.discord_free" "Icon" "$INSTDIR\dropcut.exe"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.webm\shell\DropCut.Compress.discord_free\command" "" '"$INSTDIR\dropcut.exe" --background-compress --preset-id "discord-free" --input "%1"'
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.webm\shell\DropCut.Compress.discord_nitro" "" "Compress with DropCut (50 MB)"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.webm\shell\DropCut.Compress.discord_nitro" "Icon" "$INSTDIR\dropcut.exe"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.webm\shell\DropCut.Compress.discord_nitro\command" "" '"$INSTDIR\dropcut.exe" --background-compress --preset-id "discord-nitro" --input "%1"'
-
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.avi\shell\DropCut.Compress.discord_free" "" "Compress with DropCut (10 MB)"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.avi\shell\DropCut.Compress.discord_free" "Icon" "$INSTDIR\dropcut.exe"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.avi\shell\DropCut.Compress.discord_free\command" "" '"$INSTDIR\dropcut.exe" --background-compress --preset-id "discord-free" --input "%1"'
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.avi\shell\DropCut.Compress.discord_nitro" "" "Compress with DropCut (50 MB)"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.avi\shell\DropCut.Compress.discord_nitro" "Icon" "$INSTDIR\dropcut.exe"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.avi\shell\DropCut.Compress.discord_nitro\command" "" '"$INSTDIR\dropcut.exe" --background-compress --preset-id "discord-nitro" --input "%1"'
-
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.wmv\shell\DropCut.Compress.discord_free" "" "Compress with DropCut (10 MB)"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.wmv\shell\DropCut.Compress.discord_free" "Icon" "$INSTDIR\dropcut.exe"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.wmv\shell\DropCut.Compress.discord_free\command" "" '"$INSTDIR\dropcut.exe" --background-compress --preset-id "discord-free" --input "%1"'
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.wmv\shell\DropCut.Compress.discord_nitro" "" "Compress with DropCut (50 MB)"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.wmv\shell\DropCut.Compress.discord_nitro" "Icon" "$INSTDIR\dropcut.exe"
-  WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.wmv\shell\DropCut.Compress.discord_nitro\command" "" '"$INSTDIR\dropcut.exe" --background-compress --preset-id "discord-nitro" --input "%1"'
+  ; Context menu entries are registered dynamically by the app itself on first
+  ; launch (src-tauri/src/context_menu.rs), keyed to the user's actual presets
+  ; instead of a fixed pair baked into the installer.
 !macroend
 
 !macro NSIS_HOOK_POSTUNINSTALL
@@ -77,8 +29,10 @@
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.wmv\shell\DropCut.Compress.discord_free"
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.wmv\shell\DropCut.Compress.discord_nitro"
 
-  ; App data cleanup
-  RMDir /r "$APPDATA\com.dropcut.desktop"
-  RMDir /r "$LOCALAPPDATA\com.dropcut.desktop"
+  ; Only the thumbnail cache is cleaned here. Presets, settings and history live
+  ; in $APPDATA\com.dropcut.desktop and are deleted by Tauri's own uninstall
+  ; section, which correctly honours the "delete application data" checkbox and
+  ; skips deletion during an update. Removing them here would wipe user data on
+  ; every upgrade, because this hook runs unguarded.
   RMDir /r "$TEMP\dropcut-thumbnails"
 !macroend

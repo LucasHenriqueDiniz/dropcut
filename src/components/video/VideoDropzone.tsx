@@ -3,17 +3,19 @@ import { Button } from '../ui/Button';
 import { open } from '@tauri-apps/plugin-dialog';
 import { UploadCloud, Video } from 'lucide-react';
 import { ACCEPTED_VIDEO_DESCRIPTION, ACCEPTED_VIDEO_EXTENSIONS, isAcceptedVideoPath, unsupportedVideoMessage } from '../../lib/videoFiles';
+import { useTranslation } from '../../lib/LocaleProvider';
 
 type Props = { onSelect: (path: string) => void };
 
 export function VideoDropzone({ onSelect }: Props) {
   const [isDragging, setIsDragging] = useState(false);
   const [dropMessage, setDropMessage] = useState<string | null>(null);
+  const t = useTranslation();
 
   const handleOpen = async () => {
     const selected = await open({
       multiple: false,
-      filters: [{ name: 'Video', extensions: [...ACCEPTED_VIDEO_EXTENSIONS] }]
+      filters: [{ name: t('dropzone.videoFilter'), extensions: [...ACCEPTED_VIDEO_EXTENSIONS] }]
     });
     if (typeof selected === 'string') {
       onSelect(selected);
@@ -38,7 +40,7 @@ export function VideoDropzone({ onSelect }: Props) {
       const candidate = path ?? file.name;
 
       if (!isAcceptedVideoPath(candidate)) {
-        setDropMessage(unsupportedVideoMessage());
+        setDropMessage(unsupportedVideoMessage(t));
         return;
       }
 
@@ -47,7 +49,7 @@ export function VideoDropzone({ onSelect }: Props) {
         return;
       }
 
-      setDropMessage('Drop detected, but Windows did not expose the file path here. Use Choose video to grant access.');
+      setDropMessage(t('dropzone.noPathExposed'));
     }
   };
 
@@ -68,15 +70,15 @@ export function VideoDropzone({ onSelect }: Props) {
       
       <div className="space-y-1">
         <p className={`text-sm font-medium ${isDragging ? 'text-white' : 'text-slate-100'}`}>
-          {isDragging ? 'Drop to load video' : 'Drop video anywhere'}
+          {isDragging ? t('dropzone.dropToLoad') : t('dropzone.dropAnywhere')}
         </p>
         <p className="max-w-sm text-[11px] text-white/35">
-          {ACCEPTED_VIDEO_DESCRIPTION}. Drag a video onto the workspace or use the picker below.
+          {t('dropzone.formatsHint', { formats: ACCEPTED_VIDEO_DESCRIPTION })}
         </p>
       </div>
 
       <Button type="button" onClick={handleOpen} className="mt-1 bg-[#1d9e75] px-5 py-2 text-xs hover:bg-[#188866]">
-        Choose video
+        {t('dropzone.chooseVideo')}
       </Button>
 
       {dropMessage && (

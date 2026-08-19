@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { CheckCircle2, Clapperboard, Loader2, Square, XCircle } from 'lucide-react';
 import { cancelBackgroundCompress, listenToEncodeProgress, startBackgroundCompress } from '../lib/tauri';
+import { useTranslation } from '../lib/LocaleProvider';
 
 export function ProgressWindow() {
   const [progress, setProgress] = useState({ status: 'starting', value: 0 });
   const [isCancelling, setIsCancelling] = useState(false);
+  const t = useTranslation();
 
   useEffect(() => {
     let closeTimer: number | undefined;
@@ -50,18 +52,18 @@ export function ProgressWindow() {
   const percent = isDone ? 100 : Math.max(0, Math.min(Number.isFinite(progress.value) ? progress.value : 0, 100));
   const rounded = Math.round(percent);
   const title = isError
-    ? 'Export failed'
+    ? t('progress.exportFailed')
     : isCancelled
-      ? 'Export cancelled'
+      ? t('progress.exportCancelled')
       : isDone
-        ? 'Export complete'
+        ? t('progress.exportComplete')
         : rounded > 0
-          ? 'Compressing video'
-          : 'Preparing export';
+          ? t('progress.compressingVideo')
+          : t('progress.preparingExport');
   const detail = isDone
-    ? 'Your compressed video is ready.'
+    ? t('progress.compressedReady')
     : isCancelled
-      ? 'Compression was cancelled and partial output was deleted.'
+      ? t('progress.cancelledDetail')
       : progress.status;
 
   const handleCancel = async () => {
@@ -95,7 +97,7 @@ export function ProgressWindow() {
 
           <div className="relative mt-5">
             <div className="mb-2 flex items-center justify-between text-xs text-white/45">
-              <span>{rounded > 0 ? 'Encoding frames' : 'Starting FFmpeg'}</span>
+              <span>{rounded > 0 ? t('progress.encodingFrames') : t('progress.startingFfmpeg')}</span>
               <span className="font-mono text-[#4fc3a1]">{rounded}%</span>
             </div>
             <div className="h-2.5 overflow-hidden rounded-full border border-white/10 bg-white/[0.06]">
@@ -112,7 +114,7 @@ export function ProgressWindow() {
               className="relative mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-red-300/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 transition hover:border-red-200/45 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isCancelling ? <Loader2 size={16} className="animate-spin" /> : <Square size={14} />}
-              {isCancelling ? 'Cancelling...' : 'Cancel compression'}
+              {isCancelling ? t('progress.cancelling') : t('progress.cancelCompression')}
             </button>
           ) : null}
         </div>

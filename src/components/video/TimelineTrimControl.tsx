@@ -1,5 +1,6 @@
 import { useRef, useState, type PointerEvent } from 'react';
 import { formatSeconds } from '../../lib/format';
+import { useTranslation } from '../../lib/LocaleProvider';
 import { Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 
 type DragTarget = 'start' | 'end' | 'range' | 'playhead' | null;
@@ -26,6 +27,7 @@ type Props = {
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 export function TimelineTrimControl({ duration, start, end, currentTime, isPlaying, hasAudio, volume, isMuted, thumbnails, onStartChange, onEndChange, onSeek, onPreviewSeek, onPlayPause, onVolumeChange, onToggleMute }: Props) {
+  const t = useTranslation();
   const trackRef = useRef<HTMLDivElement>(null);
   const rangeOffsetRef = useRef(0);
   const scrubTimeRef = useRef<number | null>(null);
@@ -140,7 +142,7 @@ export function TimelineTrimControl({ duration, start, end, currentTime, isPlayi
             disabled={!hasAudio}
             className="grid size-7 place-items-center rounded-md border border-white/[0.09] bg-white/[0.05] text-white/70 transition enabled:hover:bg-white/10 enabled:hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
             onClick={onToggleMute}
-            aria-label={isMuted || volumePercent === 0 ? 'Unmute video' : 'Mute video'}
+            aria-label={isMuted || volumePercent === 0 ? t('timeline.unmute') : t('timeline.mute')}
           >
             {isMuted || volumePercent === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
           </button>
@@ -152,20 +154,20 @@ export function TimelineTrimControl({ duration, start, end, currentTime, isPlayi
             disabled={!hasAudio}
             value={volumePercent}
             onChange={(event) => onVolumeChange(Number(event.currentTarget.value) / 100)}
-            aria-label="Video audio volume"
+            aria-label={t('timeline.volumeAria')}
             className="h-1.5 w-24 accent-[#4fc3a1] disabled:cursor-not-allowed"
           />
-          <span className="w-[62px] text-[10px] text-white/35">{hasAudio ? `Audio ${volumePercent}%` : 'No audio'}</span>
+          <span className="w-[62px] text-[10px] text-white/35">{hasAudio ? t('timeline.audioLevel', { percent: volumePercent }) : t('timeline.noAudio')}</span>
         </div>
         <div className="mx-1 h-3.5 w-px bg-white/[0.08]" />
-        <div className="hidden text-[10px] text-white/30 md:block">Range <span className="text-white/50">{formatSeconds(start)} - {formatSeconds(end)}</span></div>
+        <div className="hidden text-[10px] text-white/30 md:block">{t('timeline.range')} <span className="text-white/50">{formatSeconds(start)} - {formatSeconds(end)}</span></div>
       </div>
 
       <div className="relative">
         <div
           ref={trackRef}
           role="slider"
-          aria-label="Video timeline"
+          aria-label={t('timeline.timelineAria')}
           tabIndex={0}
           className="relative h-[82px] w-full touch-none overflow-hidden bg-[#08080c] outline-none ring-0"
           onPointerDown={(event) => beginDrag(event, 'playhead')}
@@ -210,8 +212,8 @@ export function TimelineTrimControl({ duration, start, end, currentTime, isPlayi
       </div>
 
       <div className="flex items-center justify-between px-3.5 pb-2 pt-1 text-[10px] text-white/25">
-        <span>Drag green handles to trim · drag needle to scrub</span>
-        <span>Clip <span className="font-mono text-white/45">{formatSeconds(Math.max(end - start, 0))}</span></span>
+        <span>{t('timeline.dragHint')}</span>
+        <span>{t('timeline.clip')} <span className="font-mono text-white/45">{formatSeconds(Math.max(end - start, 0))}</span></span>
       </div>
     </div>
   );

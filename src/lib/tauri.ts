@@ -37,6 +37,21 @@ export const cancelBackgroundCompress = () =>
 export const getFfmpegStatus = () => 
   invoke<any>('get_ffmpeg_status');
 
+export type AppSettings = {
+  default_encoder: string;
+  default_output: string;
+  default_format: string;
+  keep_audio_default: boolean;
+  default_preset_id: string;
+  auto_open_output_folder: boolean;
+  output_filename_template: string;
+  timeline_thumbnail_count: number;
+  locale: string;
+};
+
+export const getSettings = () => invoke<AppSettings>('get_settings');
+export const saveSettings = (settings: AppSettings) => invoke<void>('save_settings', { settings });
+
 export const loadPresets = () => invoke<ClipPreset[]>('load_presets');
 export const savePresets = (presets: ClipPreset[]) => invoke<void>('save_presets', { presets });
 export const installContextMenu = (presets?: ClipPreset[]) => invoke<boolean>('install_context_menu', { presets });
@@ -46,4 +61,4 @@ export const openExportFolder = (outputPath: string) => invoke<void>('open_expor
 export const getFileSize = (path: string) => invoke<number>('get_file_size', { path });
 export const loadHistory = () => invoke<HistoryEntry[]>('load_history');
 export const clearHistory = () => invoke<void>('clear_history');
-export const openExternalLink = (kind: 'donate' | 'github') => invoke<void>('open_external_link', { kind });
+export const openExternalLink = (kind: 'donate' | 'github' | 'releases') => invoke<void>('open_external_link', { kind });
