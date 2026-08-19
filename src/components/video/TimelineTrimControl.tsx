@@ -1,6 +1,6 @@
 import { useRef, useState, type PointerEvent } from 'react';
 import { formatSeconds } from '../../lib/format';
-import { useTranslation } from '../../lib/LocaleProvider';
+import { useTranslation } from '../../lib/locale';
 import { Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 
 type DragTarget = 'start' | 'end' | 'range' | 'playhead' | null;

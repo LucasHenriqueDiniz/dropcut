@@ -1,5 +1,5 @@
 import { Button } from '../ui/Button';
-import { useTranslation } from '../../lib/LocaleProvider';
+import { useTranslation } from '../../lib/locale';
 
 type Props = {
   label: string;

@@ -23,10 +23,32 @@ export const startEncode = (request: EncodeRequest) =>
 export const generateVideoThumbnails = (inputPath: string, durationSeconds: number, thumbnailCount?: number) =>
   invoke<string[]>('generate_video_thumbnails', { inputPath, durationSeconds, thumbnailCount });
 
-export const listenToEncodeProgress = (callback: (event: { status: string, progress: number }) => void) => 
-  listen<{ status: string, progress: number }>('encode-progress', (event) => {
+export const listenToEncodeProgress = (callback: (event: { status: string, progress: number, stage: string }) => void) => 
+  listen<{ status: string, progress: number, stage: string }>('encode-progress', (event) => {
     callback(event.payload);
   });
+
+/// What the size target actually buys for this clip, so the UI can show it
+/// instead of asking the user to pick numbers that fight the target.
+export type EncodeEstimate = {
+  fits: boolean;
+  videoKbps: number;
+  audioKbps: number;
+  height: number;
+  fps: number;
+  smallestBytes: number;
+  /** Target that would have kept the sound, so a mute warning can suggest one. */
+  audioNeedsMib: number;
+};
+
+export const estimateExport = (
+  targetMib: number,
+  durationSeconds: number,
+  keepAudio: boolean,
+  sourceHeight: number,
+  sourceFps: number,
+) =>
+  invoke<EncodeEstimate>('estimate_export', { targetMib, durationSeconds, keepAudio, sourceHeight, sourceFps });
 
 export const startBackgroundCompress = () =>
   invoke<boolean>('start_background_compress');
@@ -38,7 +60,6 @@ export const getFfmpegStatus = () =>
   invoke<any>('get_ffmpeg_status');
 
 export type AppSettings = {
-  default_encoder: string;
   default_output: string;
   default_format: string;
   keep_audio_default: boolean;

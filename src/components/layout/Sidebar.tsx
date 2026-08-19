@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Clapperboard, History, SlidersHorizontal, Settings, Scissors, Zap } from 'lucide-react';
-import { useTranslation } from '../../lib/LocaleProvider';
+import { useTranslation } from '../../lib/locale';
 import type { TranslationKey } from '../../lib/i18n';
 
 const nav = [

@@ -7,11 +7,10 @@ import { Slider } from '../../components/ui/Slider';
 import { Toggle } from '../../components/ui/Toggle';
 import { installContextMenu, isContextMenuInstalled, openExternalLink, uninstallContextMenu } from '../../lib/tauri';
 import { usePresets } from '../../lib/PresetProvider';
-import { useLocale } from '../../lib/LocaleProvider';
+import { useLocale } from '../../lib/locale';
 import { LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from '../../lib/i18n';
 
 type AppSettings = {
-  default_encoder: string;
   default_output: string;
   default_format: string;
   keep_audio_default: boolean;
@@ -28,7 +27,6 @@ type HealthStatus = {
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
-  default_encoder: 'auto',
   default_output: 'same_folder',
   default_format: 'original',
   keep_audio_default: true,
@@ -46,12 +44,6 @@ const sectionItems = [
 ] as const;
 
 type SettingsSectionId = (typeof sectionItems)[number]['id'];
-
-const encoderOptions = [
-  { value: 'auto', labelKey: 'settings.encoderAuto' },
-  { value: 'cpu_quality', labelKey: 'settings.encoderCpu' },
-  { value: 'gpu_fast', labelKey: 'settings.encoderGpu' },
-] as const;
 
 export function SettingsPage() {
   const { presets } = usePresets();
@@ -164,17 +156,6 @@ export function SettingsPage() {
                     onChange={(default_preset_id) => updateSettings({ default_preset_id })}
                   />
                 </label>
-
-                <div>
-                  <p className="mb-2 text-[11px] text-white/50">{t('settings.encoderPreference')}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {encoderOptions.map((option) => (
-                      <button key={option.value} type="button" onClick={() => updateSettings({ default_encoder: option.value })} className={`rounded-full border px-2.5 py-1 text-[10px] transition ${settings.default_encoder === option.value ? 'border-[#1d9e75] bg-[#4fc3a1]/15 text-[#4fc3a1]' : 'border-white/10 bg-white/[0.06] text-white/50 hover:text-white'}`}>
-                        {t(option.labelKey)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.08] bg-white/[0.03] p-3">
                   <div><p className="text-xs text-white">{t('settings.keepAudioDefault')}</p><p className="text-[10px] text-white/35">{t('settings.keepAudioDefaultSubtitle')}</p></div>

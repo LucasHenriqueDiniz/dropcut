@@ -142,20 +142,11 @@ fn run_background_compress(
     let request = EncodeRequest {
         input_path: input_path.to_string(),
         output_path: Some(output_path),
-        target: preset.target_mi_b.ceil() as u32,
+        target: preset.target_mi_b,
         start_seconds: 0.0,
         end_seconds: meta.duration_seconds,
-        format: preset.output_format,
-        encoder: if preset.default_encoder == "auto" {
-            settings.default_encoder
-        } else {
-            preset.default_encoder
-        },
+        format: settings.default_format,
         keep_audio: settings.keep_audio_default,
-        max_resolution: preset.max_resolution,
-        max_fps: preset.max_fps,
-        audio_kbps: preset.audio_kbps,
-        speed_quality: preset.speed_quality,
     };
 
     video_encode::run_encode_blocking_with_control(app, request, meta, Some(control))

@@ -1,5 +1,5 @@
 import { forwardRef, useState } from 'react';
-import { useTranslation } from '../../lib/LocaleProvider';
+import { useTranslation } from '../../lib/locale';
 
 type Props = {
   src?: string; 

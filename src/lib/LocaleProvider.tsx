@@ -1,30 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
-import {
-  detectInitialLocale,
-  isSupportedLocale,
-  translate,
-  type Locale,
-  type TranslateFn,
-} from './i18n';
+import { useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import { detectInitialLocale, isSupportedLocale, translate, type Locale } from './i18n';
 import { getSettings, saveSettings } from './tauri';
-
-type LocaleContextValue = {
-  locale: Locale;
-  setLocale: (locale: Locale) => void;
-  t: TranslateFn;
-};
-
-const STORAGE_KEY = 'dropcut.locale.v1';
-const LocaleContext = createContext<LocaleContextValue | null>(null);
-
-function loadStoredLocale(): Locale | null {
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    return isSupportedLocale(stored) ? stored : null;
-  } catch {
-    return null;
-  }
-}
+import {
+  LocaleContext,
+  LOCALE_STORAGE_KEY,
+  loadStoredLocale,
+  type LocaleContextValue,
+} from './locale';
 
 export function LocaleProvider({ children }: PropsWithChildren) {
   const [locale, setLocale] = useState<Locale>(() => loadStoredLocale() ?? detectInitialLocale());
@@ -52,7 +34,7 @@ export function LocaleProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, locale);
+      window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
     } catch (error) {
       console.error('Failed to persist locale locally', error);
     }
@@ -70,14 +52,4 @@ export function LocaleProvider({ children }: PropsWithChildren) {
   }), [locale]);
 
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
-}
-
-export function useLocale() {
-  const value = useContext(LocaleContext);
-  if (!value) throw new Error('useLocale must be used inside LocaleProvider');
-  return value;
-}
-
-export function useTranslation(): TranslateFn {
-  return useLocale().t;
 }

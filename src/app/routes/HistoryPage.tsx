@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Clock, FileVideo, FolderOpen, History, Loader2, RotateCcw, Sparkles } from 'lucide-react';
 import { clearHistory, loadHistory, openExportFolder, type HistoryEntry } from '../../lib/tauri';
 import { formatBytes, formatSeconds } from '../../lib/format';
-import { useLocale } from '../../lib/LocaleProvider';
+import { useLocale } from '../../lib/locale';
 
 function fileName(path: string) {
   return path.split(/[\\/]/).pop() || path;

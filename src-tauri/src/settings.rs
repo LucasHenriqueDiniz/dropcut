@@ -8,7 +8,6 @@ use tauri::Manager;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(default)]
 pub struct AppSettings {
-    pub default_encoder: String,
     pub default_output: String,
     pub default_format: String,
     pub keep_audio_default: bool,
@@ -22,7 +21,6 @@ pub struct AppSettings {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            default_encoder: "auto".to_string(),
             default_output: "same_folder".to_string(),
             default_format: "original".to_string(),
             keep_audio_default: true,

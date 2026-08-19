@@ -14,6 +14,16 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '0.1.3',
+    highlights: [
+      'releaseNotes.v0_1_3_exactSize',
+      'releaseNotes.v0_1_3_autoQuality',
+      'releaseNotes.v0_1_3_audio',
+      'releaseNotes.v0_1_3_simplerPresets',
+      'releaseNotes.v0_1_3_warnings',
+    ],
+  },
+  {
     version: '0.1.2',
     highlights: [
       'releaseNotes.v0_1_2_languages',

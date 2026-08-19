@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Settings2, X } from 'lucide-react';
 import { type ClipPreset, type ClipPresetId } from '../../lib/presets';
-import { useTranslation } from '../../lib/LocaleProvider';
+import { useTranslation } from '../../lib/locale';
 
 type Props = {
   value: ClipPresetId;

@@ -2,17 +2,17 @@ import { useEffect, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { CheckCircle2, Clapperboard, Loader2, Square, XCircle } from 'lucide-react';
 import { cancelBackgroundCompress, listenToEncodeProgress, startBackgroundCompress } from '../lib/tauri';
-import { useTranslation } from '../lib/LocaleProvider';
+import { useTranslation } from '../lib/locale';
 
 export function ProgressWindow() {
-  const [progress, setProgress] = useState({ status: 'starting', value: 0 });
+  const [progress, setProgress] = useState({ status: 'starting', value: 0, stage: '' });
   const [isCancelling, setIsCancelling] = useState(false);
   const t = useTranslation();
 
   useEffect(() => {
     let closeTimer: number | undefined;
     const unlisten = listenToEncodeProgress((payload) => {
-      setProgress({ status: payload.status, value: payload.progress });
+      setProgress({ status: payload.status, value: payload.progress, stage: payload.stage });
 
       const normalized = payload.status.toLowerCase();
       if (normalized.includes('done') || normalized.includes('error') || normalized.includes('failed') || normalized.includes('cancelled')) {
@@ -27,7 +27,7 @@ export function ProgressWindow() {
         await getCurrentWindow().show();
         await startBackgroundCompress();
       } catch (error) {
-        setProgress({ status: `Error: ${String(error)}`, value: 0 });
+        setProgress({ status: `Error: ${String(error)}`, value: 0, stage: '' });
         closeTimer = window.setTimeout(() => {
           void getCurrentWindow().close();
         }, 1600);
@@ -60,20 +60,25 @@ export function ProgressWindow() {
         : rounded > 0
           ? t('progress.compressingVideo')
           : t('progress.preparingExport');
+  const stageLabel = progress.stage === 'adjusting' ? t('progress.stageAdjusting') : t('progress.stageEncoding');
   const detail = isDone
     ? t('progress.compressedReady')
     : isCancelled
       ? t('progress.cancelledDetail')
-      : progress.status;
+      : isError
+        ? progress.status
+        : rounded > 0
+          ? stageLabel
+          : t('progress.startingStage');
 
   const handleCancel = async () => {
     if (isFinished || isCancelling) return;
     setIsCancelling(true);
     try {
       await cancelBackgroundCompress();
-      setProgress({ status: 'Cancelled by user', value: rounded });
+      setProgress({ status: 'Cancelled by user', value: rounded, stage: '' });
     } catch (error) {
-      setProgress({ status: `Error: failed to cancel (${String(error)})`, value: rounded });
+      setProgress({ status: `Error: failed to cancel (${String(error)})`, value: rounded, stage: '' });
     } finally {
       setIsCancelling(false);
     }

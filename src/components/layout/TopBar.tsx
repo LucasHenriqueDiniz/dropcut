@@ -2,7 +2,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { NavLink } from 'react-router-dom';
 import { ArrowUpCircle, Clapperboard, HandHeart, History, Minus, Settings, SlidersHorizontal, Square, X } from 'lucide-react';
 import { openExternalLink } from '../../lib/tauri';
-import { useTranslation } from '../../lib/LocaleProvider';
+import { useTranslation } from '../../lib/locale';
 import { useUpdateCheck } from '../../lib/useUpdateCheck';
 import type { TranslationKey } from '../../lib/i18n';
 

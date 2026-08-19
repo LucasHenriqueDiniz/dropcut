@@ -6,6 +6,7 @@ mod headless;
 mod history;
 mod log_util;
 mod presets;
+mod quality;
 mod settings;
 mod video_encode;
 mod video_probe;
@@ -75,6 +76,7 @@ pub fn run(args: Vec<String>) {
             commands::get_ffmpeg_status,
             commands::detect_available_encoders,
             commands::start_encode,
+            commands::estimate_export,
             commands::load_presets,
             commands::save_presets,
             commands::get_settings,

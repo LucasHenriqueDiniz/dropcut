@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Plus, Save, Trash2 } from 'lucide-react';
+import { Plus, Save, Trash2, Wand2 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { Select } from '../../components/ui/Select';
 import { Slider } from '../../components/ui/Slider';
 import { Toggle } from '../../components/ui/Toggle';
 import { usePresets } from '../../lib/PresetProvider';
-import { createPresetId, type ClipPreset, type EncoderMode, type OutputFormat } from '../../lib/presets';
-import { useTranslation } from '../../lib/LocaleProvider';
+import { createPresetId, type ClipPreset } from '../../lib/presets';
+import { useTranslation } from '../../lib/locale';
 
 const emptyPreset = (): ClipPreset => ({
   id: createPresetId(),
@@ -14,19 +13,7 @@ const emptyPreset = (): ClipPreset => ({
   targetMiB: 25,
   visible: true,
   description: 'Custom preset',
-  outputFormat: 'original',
-  speedQuality: 60,
-  maxResolution: 1080,
-  maxFps: 60,
-  audioKbps: 96,
-  defaultEncoder: 'auto',
 });
-
-function encoderFromSpeedQuality(value: number): EncoderMode {
-  if (value <= 35) return 'gpu_fast';
-  if (value >= 75) return 'cpu_quality';
-  return 'auto';
-}
 
 export function PresetsPage() {
   const { presets, addPreset, updatePreset, deletePreset, resetPresets } = usePresets();
@@ -42,15 +29,18 @@ export function PresetsPage() {
 
   const updateDraft = (patch: Partial<ClipPreset>) => setDraft((current) => ({ ...current, ...patch }));
 
+  const setTarget = (value: number) => {
+    if (!Number.isFinite(value)) return;
+    updateDraft({ targetMiB: Math.min(Math.max(Math.round(value), 1), 20000) });
+  };
+
   const handleSave = () => {
-    const speedQuality = Math.min(Math.max(draft.speedQuality, 0), 100);
+    const targetMiB = Math.min(Math.max(draft.targetMiB, 1), 20000);
     const next: ClipPreset = {
       ...draft,
-      label: draft.label.trim() || `${Math.round(draft.targetMiB)} MB`,
+      targetMiB,
+      label: draft.label.trim() || `${targetMiB} MB`,
       description: draft.description.trim() || t('presets.customPreset'),
-      targetMiB: Math.max(1, draft.targetMiB),
-      speedQuality,
-      defaultEncoder: encoderFromSpeedQuality(speedQuality),
     };
 
     if (selected) {
@@ -77,7 +67,7 @@ export function PresetsPage() {
               {presets.map((preset) => (
                 <button key={preset.id} type="button" onClick={() => setActiveId(preset.id)} className={`rounded-lg border p-3 text-left transition ${activeId === preset.id ? 'border-[#4fc3a1] bg-[#4fc3a1]/10' : 'border-white/[0.09] bg-white/[0.04] hover:bg-white/[0.07]'}`}>
                   <p className="text-xs font-medium text-white">{preset.label}</p>
-                  <p className="mt-0.5 text-[10px] text-white/40">{preset.description} · {preset.maxResolution}p · {preset.maxFps}fps</p>
+                  <p className="mt-0.5 text-[10px] text-white/40">{preset.description}</p>
                   {preset.visible && <span className="mt-1.5 inline-flex rounded-full bg-[#4fc3a1]/15 px-2 py-0.5 text-[10px] text-[#4fc3a1]">{t('presets.visible')}</span>}
                 </button>
               ))}
@@ -105,15 +95,36 @@ export function PresetsPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1.5 text-[11px] text-white/50">{t('presets.name')}<input value={draft.label} onChange={(event) => updateDraft({ label: event.target.value })} className="w-full rounded-md border border-white/10 bg-white/[0.05] px-3 py-2 text-xs text-white outline-none focus:border-[#4fc3a1]" /></label>
             <label className="space-y-1.5 text-[11px] text-white/50">{t('presets.description')}<input value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} className="w-full rounded-md border border-white/10 bg-white/[0.05] px-3 py-2 text-xs text-white outline-none focus:border-[#4fc3a1]" /></label>
-            <label className="space-y-1.5 text-[11px] text-white/50">{t('presets.maxResolution')}<Select value={draft.maxResolution} options={[480, 720, 1080, 1440].map((value) => ({ value, label: `${value}p` }))} onChange={(maxResolution) => updateDraft({ maxResolution })} /></label>
-            <label className="space-y-1.5 text-[11px] text-white/50">{t('presets.maxFps')}<Select value={draft.maxFps} options={[24, 30, 60].map((value) => ({ value, label: String(value) }))} onChange={(maxFps) => updateDraft({ maxFps })} /></label>
-            <label className="space-y-1.5 text-[11px] text-white/50">{t('presets.outputFormat')}<Select value={draft.outputFormat} options={[{ value: 'original' as OutputFormat, label: t('presets.formatOriginal') }, { value: 'landscape' as OutputFormat, label: t('presets.formatLandscape') }, { value: 'vertical' as OutputFormat, label: t('presets.formatVertical') }]} onChange={(outputFormat) => updateDraft({ outputFormat })} /></label>
-            <label className="space-y-1.5 text-[11px] text-white/50">{t('presets.audioBitrate')}<Select value={draft.audioKbps} options={[48, 96, 128, 192].map((value) => ({ value, label: t('presets.audioKbps', { value }) }))} onChange={(audioKbps) => updateDraft({ audioKbps })} /></label>
           </div>
 
-          <div className="mt-5 space-y-5">
-            <label className="block space-y-2 text-[11px] text-white/50"><span className="flex justify-between">{t('presets.targetSize')} <b className="font-medium text-[#4fc3a1]">{draft.targetMiB} MiB</b></span><Slider min={1} max={500} step={1} value={draft.targetMiB} onChange={(event) => updateDraft({ targetMiB: Number(event.target.value) })} /></label>
-            <label className="block space-y-2 text-[11px] text-white/50"><span className="flex justify-between">{t('presets.speedQuality')} <b className="font-medium text-[#4fc3a1]">{draft.speedQuality}%</b></span><Slider min={0} max={100} step={1} value={draft.speedQuality} onChange={(event) => updateDraft({ speedQuality: Number(event.target.value), defaultEncoder: encoderFromSpeedQuality(Number(event.target.value)) })} /><span className="flex justify-between text-[10px] text-white/25"><span>{t('presets.faster')}</span><span>{t('presets.balanced')}</span><span>{t('presets.betterQuality')}</span></span></label>
+          <div className="mt-5">
+            <label className="block space-y-2 text-[11px] text-white/50">
+              <span className="flex items-center justify-between">
+                {t('presets.targetSize')}
+                <span className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min={1}
+                    max={20000}
+                    value={draft.targetMiB}
+                    onChange={(event) => setTarget(Number(event.target.value))}
+                    className="w-20 rounded-md border border-white/10 bg-white/[0.05] px-2 py-1 text-right text-xs font-medium text-[#4fc3a1] outline-none focus:border-[#4fc3a1]"
+                  />
+                  <b className="font-medium text-[#4fc3a1]">MB</b>
+                </span>
+              </span>
+              <Slider min={1} max={500} step={1} value={Math.min(draft.targetMiB, 500)} onChange={(event) => setTarget(Number(event.target.value))} />
+            </label>
+          </div>
+
+          {/* Quality is not a field any more: every setting that used to live here
+              competed with the size target the app promises to hit. */}
+          <div className="mt-5 flex gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+            <Wand2 size={15} className="mt-0.5 shrink-0 text-[#4fc3a1]" />
+            <div>
+              <p className="text-xs text-white">{t('presets.autoQualityTitle')}</p>
+              <p className="mt-1 text-[10px] leading-relaxed text-white/40">{t('presets.autoQualityBody')}</p>
+            </div>
           </div>
 
           <div className="my-5 h-px bg-white/[0.07]" />

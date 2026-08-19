@@ -13,17 +13,14 @@ export type VideoMetadata = {
 
 export type ProgressStatus = string;
 
+/// Everything the backend needs. Quality settings are absent on purpose: they
+/// are derived from `target`, because any fixed value competes with it.
 export type EncodeRequest = {
-  input_path: string;
-  output_path?: string;
+  inputPath: string;
+  outputPath?: string;
   target: number;
-  start_seconds: number;
-  end_seconds: number;
+  startSeconds: number;
+  endSeconds: number;
   format: string;
-  encoder: string;
-  keep_audio: boolean;
-  max_resolution: number;
-  max_fps: number;
-  audio_kbps: number;
-  speed_quality: number;
+  keepAudio: boolean;
 };

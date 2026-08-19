@@ -9,26 +9,44 @@ import { TimelineTrimControl } from '../../components/video/TimelineTrimControl'
 import { ExportPanel } from '../../components/video/ExportPanel';
 import { ProgressDialog } from '../../components/video/ProgressDialog';
 import { type OutputFormat } from '../../lib/presets';
+import type { EncodeEstimate } from '../../lib/tauri';
 import { usePresets } from '../../lib/PresetProvider';
 import { useEditorSession } from '../../lib/EditorSessionProvider';
-import { generateVideoThumbnails, getFileSize, openExportFolder, probeVideo, startEncode, listenToEncodeProgress } from '../../lib/tauri';
+import { estimateExport, generateVideoThumbnails, getFileSize, openExportFolder, probeVideo, startEncode, listenToEncodeProgress } from '../../lib/tauri';
 import { AlertTriangle, FolderOpen, Loader2, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { Link } from 'react-router-dom';
-import { formatSeconds } from '../../lib/format';
+import { formatBytes, formatSeconds } from '../../lib/format';
 import { Toggle } from '../../components/ui/Toggle';
 import { Select } from '../../components/ui/Select';
+import { Modal } from '../../components/ui/Modal';
+import { Button } from '../../components/ui/Button';
 import { isAcceptedVideoPath, unsupportedVideoMessage } from '../../lib/videoFiles';
-import { useTranslation } from '../../lib/LocaleProvider';
+import { useTranslation } from '../../lib/locale';
 
 type AppSettings = {
-  default_encoder: string;
   keep_audio_default: boolean;
+  default_format: string;
   default_preset_id: string;
   auto_open_output_folder: boolean;
   output_filename_template: string;
   timeline_thumbnail_count: number;
 };
+
+/** Something worth telling the user before a long encode starts. */
+type ExportPrompt =
+  | { kind: 'alreadyFits'; target: number }
+  | { kind: 'wontFit'; target: number; smallestBytes: number }
+  | { kind: 'audioDropped'; target: number; audioNeedsMib: number };
+
+function promptVars(prompt: ExportPrompt) {
+  return {
+    target: `${Math.round(prompt.target)} MB`,
+    smallest: prompt.kind === 'wontFit' ? formatBytes(prompt.smallestBytes) : '',
+    audioNeeds: prompt.kind === 'audioDropped' ? `${Math.round(prompt.audioNeedsMib)} MB` : '',
+    size: '',
+  };
+}
 
 export function EditorPage() {
   const {
@@ -56,10 +74,12 @@ export function EditorPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { presets } = usePresets();
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [progress, setProgress] = useState({ open: false, status: 'probing', value: 0 });
+  const [progress, setProgress] = useState({ open: false, status: 'probing', value: 0, stage: '' });
   const [lastOutputPath, setLastOutputPath] = useState<string | null>(null);
   const [lastSuccessfulOutputPath, setLastSuccessfulOutputPath] = useState<string | null>(null);
   const [lastOutputSizeBytes, setLastOutputSizeBytes] = useState<number | null>(null);
+  const [exportPrompt, setExportPrompt] = useState<ExportPrompt | null>(null);
+  const [estimate, setEstimate] = useState<EncodeEstimate | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [volume, setVolume] = useState(1);
@@ -98,14 +118,45 @@ export function EditorPage() {
       if (defaultPreset) {
         setDefaultPresetApplied(true);
         setPreset(defaultPreset.id);
-        setFormat(defaultPreset.outputFormat);
+        // Aspect used to ride along with the preset; it is an app default now,
+        // shared with the context-menu path so both behave the same.
+        if (value.default_format) setFormat(value.default_format as OutputFormat);
       }
     }).catch(console.error);
   }, [presets]);
 
+  // The sidebar shows what this target actually buys, so the numbers have to
+  // follow every input that feeds the budget.
+  useEffect(() => {
+    if (!metadata || !selectedPreset || end <= start) {
+      setEstimate(null);
+      return;
+    }
+
+    let cancelled = false;
+    estimateExport(
+      selectedPreset.targetMiB,
+      end - start,
+      settings?.keep_audio_default ?? true,
+      metadata.height,
+      metadata.fps,
+    )
+      .then((value) => {
+        if (!cancelled) setEstimate(value);
+      })
+      .catch((error) => {
+        console.error('Failed to estimate quality', error);
+        if (!cancelled) setEstimate(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [metadata, selectedPreset?.targetMiB, start, end, settings?.keep_audio_default]);
+
   useEffect(() => {
     const unlisten = listenToEncodeProgress((payload) => {
-      setProgress({ open: true, status: payload.status, value: payload.progress });
+      setProgress({ open: true, status: payload.status, value: payload.progress, stage: payload.stage });
 
       const outputPath = lastOutputPathRef.current;
       const shouldAutoOpen = settingsRef.current?.auto_open_output_folder;
@@ -173,6 +224,24 @@ export function EditorPage() {
       cancelled = true;
     };
   }, [metadata, setThumbnailCacheKey, setThumbnails, settings?.timeline_thumbnail_count, thumbnailCacheKey, thumbnails.length, videoSrc]);
+
+  /**
+   * The preset picked in the editor becomes the default for next launch.
+   * Settings are re-read before saving so unrelated fields (language, output
+   * folder) are never dropped by this narrow update.
+   */
+  const rememberPreset = async (presetId: string) => {
+    if (settingsRef.current?.default_preset_id === presetId) return;
+    try {
+      const current = await invoke<Record<string, unknown>>('get_settings');
+      const next = { ...current, default_preset_id: presetId };
+      await invoke('save_settings', { settings: next });
+      settingsRef.current = next as unknown as AppSettings;
+      setSettings(next as unknown as AppSettings);
+    } catch (error) {
+      console.error('Failed to remember preset', error);
+    }
+  };
 
   const seekTo = (time: number) => {
     const video = videoRef.current;
@@ -344,7 +413,40 @@ export function EditorPage() {
     };
   }, []);
 
+  /**
+   * Re-encoding a file that already fits only makes it bigger, so ask first.
+   * Going ahead is still legitimate when trimming or changing aspect ratio.
+   */
   const handleExport = async (target: number) => {
+    if (!metadata || !selectedPreset) return;
+
+    if (metadata.size_bytes != null && metadata.size_bytes <= target * 1024 * 1024) {
+      setExportPrompt({ kind: 'alreadyFits', target });
+      return;
+    }
+
+    // A long clip can be arithmetically impossible to fit, and a tight budget
+    // can cost the audio track. Either way, say so before spending minutes.
+    try {
+      const keepAudio = settings?.keep_audio_default ?? true;
+      const plan = await estimateExport(target, end - start, keepAudio, metadata.height, metadata.fps);
+
+      if (!plan.fits) {
+        setExportPrompt({ kind: 'wontFit', target, smallestBytes: plan.smallestBytes });
+        return;
+      }
+      if (keepAudio && plan.audioKbps === 0) {
+        setExportPrompt({ kind: 'audioDropped', target, audioNeedsMib: plan.audioNeedsMib });
+        return;
+      }
+    } catch (error) {
+      console.error('Failed to estimate export', error);
+    }
+
+    void runExport(target);
+  };
+
+  const runExport = async (target: number) => {
     if (!metadata || !selectedPreset) return;
     try {
       const stem = metadata.file_name.replace(/\.[^/.]+$/, '');
@@ -352,7 +454,7 @@ export function EditorPage() {
         ? metadata.path.slice(0, metadata.path.lastIndexOf('\\'))
         : metadata.path.slice(0, metadata.path.lastIndexOf('/'));
       const template = settings?.output_filename_template.trim() || '{target}mb_{name}';
-      const outputName = template.replaceAll('{target}', String(target)).replaceAll('{name}', stem);
+      const outputName = template.replaceAll('{target}', String(Math.round(target))).replaceAll('{name}', stem);
       const outputPath = await save({
         defaultPath: `${folder}\\${outputName}.mp4`,
         filters: [{ name: 'MP4 Video', extensions: ['mp4'] }],
@@ -364,20 +466,15 @@ export function EditorPage() {
       setLastOutputSizeBytes(null);
       lastOutputPathRef.current = outputPath;
       autoOpenedPathRef.current = null;
-      setProgress({ open: true, status: 'Encoding...', value: 0 });
+      setProgress({ open: true, status: 'Encoding...', value: 0, stage: 'encoding' });
       await startEncode({
-        input_path: metadata.path,
-        output_path: outputPath,
+        inputPath: metadata.path,
+        outputPath,
         target,
-        start_seconds: start,
-        end_seconds: end,
+        startSeconds: start,
+        endSeconds: end,
         format,
-        encoder: selectedPreset.defaultEncoder === 'auto' ? (settings?.default_encoder ?? 'auto') : selectedPreset.defaultEncoder,
-        keep_audio: settings?.keep_audio_default ?? true,
-        max_resolution: selectedPreset.maxResolution,
-        max_fps: selectedPreset.maxFps,
-        audio_kbps: selectedPreset.audioKbps,
-        speed_quality: selectedPreset.speedQuality,
+        keepAudio: settings?.keep_audio_default ?? true,
       });
     } catch (e) {
       console.error('Export failed', e);
@@ -468,30 +565,25 @@ export function EditorPage() {
                 options={visiblePresetOptions}
                 className="mb-2"
                 onChange={(value) => {
-                  const nextPreset = presets.find((item) => item.id === value);
                   setPreset(value);
-                  if (nextPreset) setFormat(nextPreset.outputFormat);
+                  void rememberPreset(value);
                 }}
               />
               <Link to="/presets" className="flex w-full items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] text-white/60 transition hover:text-white">
                 <SlidersHorizontal size={13} /> {t('editor.managePresets')}
               </Link>
-              {selectedPreset && (
-                <div className="mt-2 rounded-lg border border-white/[0.08] bg-white/[0.035] p-2.5">
-                  <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-white/30">{t('editor.presetDetails')}</p>
-                  <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-                    <div className="rounded-md bg-black/20 p-2"><p className="font-medium text-white">{selectedPreset.maxResolution}p</p><p className="mt-0.5 text-white/35">{t('editor.maxRes')}</p></div>
-                    <div className="rounded-md bg-black/20 p-2"><p className="font-medium text-white">{selectedPreset.maxFps}fps</p><p className="mt-0.5 text-white/35">{t('editor.frameCap')}</p></div>
-                    <div className="rounded-md bg-black/20 p-2"><p className="font-medium text-white">{selectedPreset.audioKbps > 0 ? `${selectedPreset.audioKbps}k` : t('editor.audioOff')}</p><p className="mt-0.5 text-white/35">{t('editor.audio')}</p></div>
-                    <div className="rounded-md bg-black/20 p-2"><p className="font-medium text-white">{selectedPreset.defaultEncoder === 'gpu_fast' ? 'GPU' : selectedPreset.defaultEncoder === 'cpu_quality' ? 'CPU' : t('settings.encoderAuto')}</p><p className="mt-0.5 text-white/35">{t('editor.encoder')}</p></div>
+              {selectedPreset && estimate && (
+                <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-2.5">
+                  <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-white/30">{t('editor.plannedQuality')}</p>
+                  <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+                    <div className="rounded-md bg-black/20 p-2"><p className="font-medium text-white">{estimate.height}p</p><p className="mt-0.5 text-white/35">{t('editor.maxRes')}</p></div>
+                    <div className="rounded-md bg-black/20 p-2"><p className="font-medium text-white">{estimate.fps}fps</p><p className="mt-0.5 text-white/35">{t('editor.frameCap')}</p></div>
+                    <div className="rounded-md bg-black/20 p-2"><p className="font-medium text-white">{estimate.audioKbps > 0 ? `${estimate.audioKbps}k` : t('editor.audioOff')}</p><p className="mt-0.5 text-white/35">{t('editor.audio')}</p></div>
                   </div>
+                  <p className="mt-2 text-[10px] leading-relaxed text-white/30">{t('editor.plannedQualityHint')}</p>
                 </div>
               )}
-            </div>
 
-            <div className="h-px bg-white/[0.07]" />
-            <div>
-              <p className="mb-2 text-[10px] uppercase tracking-[0.12em] text-white/30">{t('editor.aspectRatio')}</p>
               <div className="flex flex-wrap gap-1.5">
                 {formatModes.map((mode) => (
                   <button key={mode.id} type="button" onClick={() => setFormat(mode.id as OutputFormat)} className={`rounded-full border px-2.5 py-1 text-[10px] transition ${format === mode.id ? 'border-[#1d9e75] bg-[#4fc3a1]/15 text-[#4fc3a1]' : 'border-white/10 bg-white/[0.06] text-white/50 hover:text-white'}`}>
@@ -506,12 +598,12 @@ export function EditorPage() {
                 <div><p className="text-[11px] text-white">{t('editor.keepAudio')}</p><p className="text-[10px] text-white/35">{t('editor.keepAudioSubtitle')}</p></div>
                 <Toggle checked={settings?.keep_audio_default ?? true} onChange={(keep_audio_default) => setSettings((current) => current ? { ...current, keep_audio_default } : current)} />
               </div>
-              <ExportPanel label={selectedPreset?.label ?? t('editor.presetFallback')} disabled={!metadata || !selectedPreset} onExport={() => selectedPreset && handleExport(Math.ceil(selectedPreset.targetMiB))} />
+              <ExportPanel label={selectedPreset?.label ?? t('editor.presetFallback')} disabled={!metadata || !selectedPreset} onExport={() => selectedPreset && void handleExport(selectedPreset.targetMiB)} />
               {metadata && lastSuccessfulOutputPath && (
                 <div className="grid grid-cols-2 gap-1.5">
                   <button
                     type="button"
-                    onClick={() => selectedPreset && handleExport(Math.ceil(selectedPreset.targetMiB))}
+                    onClick={() => selectedPreset && void handleExport(selectedPreset.targetMiB)}
                     className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-2 text-[11px] text-white/65 transition hover:text-white"
                   >
                     <RotateCcw size={13} /> {t('editor.reExport')}
@@ -577,10 +669,53 @@ export function EditorPage() {
         )}
       </main>
 
+      <Modal open={exportPrompt !== null} onClose={() => setExportPrompt(null)}>
+        <div className="mb-4 flex items-center gap-3">
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-amber-300/12 text-amber-300">
+            <AlertTriangle size={22} />
+          </div>
+          <h2 className="text-lg font-semibold text-white">
+            {exportPrompt ? t(`${exportPrompt.kind}.title`, promptVars(exportPrompt)) : ''}
+          </h2>
+        </div>
+        <p className="text-sm leading-relaxed text-white/60">
+          {exportPrompt
+            ? t(`${exportPrompt.kind}.body`, {
+                ...promptVars(exportPrompt),
+                size: formatBytes(metadata?.size_bytes ?? 0),
+              })
+            : ''}
+        </p>
+        <p className="mt-2 text-xs text-white/35">
+          {exportPrompt ? t(`${exportPrompt.kind}.hint`) : ''}
+        </p>
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setExportPrompt(null)}
+            className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] text-white/60 transition hover:text-white"
+          >
+            {t('exportPrompt.cancel')}
+          </button>
+          <Button
+            type="button"
+            onClick={() => {
+              const target = exportPrompt?.target;
+              setExportPrompt(null);
+              if (target !== undefined) void runExport(target);
+            }}
+            className="bg-[#1d9e75] px-4 py-2 text-xs hover:bg-[#188866]"
+          >
+            {t('exportPrompt.exportAnyway')}
+          </Button>
+        </div>
+      </Modal>
+
       <ProgressDialog 
         open={progress.open} 
         status={progress.status as any} 
-        progress={progress.value} 
+        progress={progress.value}
+        stage={progress.stage} 
         outputPath={lastOutputPath}
         inputSizeBytes={metadata?.size_bytes ?? null}
         outputSizeBytes={lastOutputSizeBytes}

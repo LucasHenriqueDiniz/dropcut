@@ -1,7 +1,7 @@
 import { Sparkles, Check } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { useTranslation } from '../../lib/LocaleProvider';
+import { useTranslation } from '../../lib/locale';
 import type { ReleaseNote } from '../../lib/releaseNotes';
 
 type Props = {

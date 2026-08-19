@@ -4,68 +4,54 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::Manager;
 
+/// A preset is a named size target and nothing else.
+///
+/// Resolution, frame rate, audio bitrate and encoder used to live here, and
+/// that was the bug: every one of them competed with the size target the app
+/// promises to hit. They are derived from the target now — see `quality`.
+/// Unknown fields in an older presets.json are simply ignored on load.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ClipPreset {
     pub id: String,
     pub label: String,
     pub target_mi_b: f64,
+    #[serde(default = "default_true")]
     pub visible: bool,
+    #[serde(default)]
     pub description: String,
-    pub output_format: String,
-    pub speed_quality: u8,
-    pub max_resolution: u32,
-    pub max_fps: u32,
-    pub audio_kbps: i32,
-    pub default_encoder: String,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl ClipPreset {
     pub fn normalized(mut self) -> Self {
-        self.target_mi_b = self.target_mi_b.max(1.0);
-        self.speed_quality = self.speed_quality.min(100);
-        self.max_resolution = self.max_resolution.clamp(240, 2160);
-        self.max_fps = self.max_fps.clamp(12, 120);
-        self.audio_kbps = self.audio_kbps.clamp(0, 320);
-        if self.output_format.is_empty() {
-            self.output_format = "original".to_string();
-        }
-        if self.default_encoder.is_empty() {
-            self.default_encoder = "auto".to_string();
+        self.target_mi_b = self.target_mi_b.clamp(1.0, 20_000.0);
+        if self.label.trim().is_empty() {
+            self.label = format!("{} MB", self.target_mi_b.round() as u64);
         }
         self
     }
 }
 
 pub fn default_presets() -> Vec<ClipPreset> {
-    vec![
-        ClipPreset {
-            id: "discord-free".to_string(),
-            label: "10 MB".to_string(),
-            target_mi_b: 9.75,
-            visible: true,
-            description: "Discord Free".to_string(),
-            output_format: "original".to_string(),
-            speed_quality: 72,
-            max_resolution: 720,
-            max_fps: 30,
-            audio_kbps: 48,
-            default_encoder: "cpu_quality".to_string(),
-        },
-        ClipPreset {
-            id: "discord-nitro".to_string(),
-            label: "50 MB".to_string(),
-            target_mi_b: 48.0,
-            visible: true,
-            description: "Discord Nitro".to_string(),
-            output_format: "original".to_string(),
-            speed_quality: 62,
-            max_resolution: 1080,
-            max_fps: 60,
-            audio_kbps: 96,
-            default_encoder: "auto".to_string(),
-        },
+    [
+        ("discord-free", "10 MB", 10.0, "Discord Free"),
+        ("discord-free-20", "20 MB", 20.0, "Discord Free"),
+        ("discord-nitro", "50 MB", 50.0, "Nitro Basic"),
+        ("discord-nitro-max", "500 MB", 500.0, "Nitro"),
     ]
+    .into_iter()
+    .map(|(id, label, target_mi_b, description)| ClipPreset {
+        id: id.to_string(),
+        label: label.to_string(),
+        target_mi_b,
+        visible: true,
+        description: description.to_string(),
+    })
+    .collect()
 }
 
 pub fn config_dir_from_env() -> PathBuf {

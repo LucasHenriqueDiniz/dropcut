@@ -4,6 +4,7 @@ use crate::headless::{BackgroundArgs, BackgroundState};
 use crate::history::HistoryEntry;
 use crate::log_util::emit_log;
 use crate::presets::{self, ClipPreset};
+use crate::quality;
 use crate::settings::{self, AppSettings};
 use crate::video_encode::{self, EncodeRequest};
 use crate::video_probe::{self, VideoMetadata};
@@ -147,6 +148,27 @@ pub async fn start_encode(app: AppHandle, request: EncodeRequest) -> Result<Stri
     })?;
     emit_log(&app, "INFO", "Encode process started in background.");
     Ok("Encoding started".to_string())
+}
+
+/// Lets the UI show what the target buys, and warn before a long export
+/// instead of spending minutes to produce a file that cannot respect it.
+#[tauri::command]
+pub fn estimate_export(
+    target_mib: f64,
+    duration_seconds: f64,
+    keep_audio: bool,
+    source_height: u32,
+    source_fps: f64,
+) -> quality::EncodeEstimate {
+    quality::estimate_export(
+        target_mib,
+        duration_seconds,
+        keep_audio,
+        quality::SourceLimits {
+            height: source_height.max(144),
+            fps: source_fps.round().clamp(12.0, 120.0) as u32,
+        },
+    )
 }
 
 #[tauri::command]

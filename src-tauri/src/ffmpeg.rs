@@ -91,6 +91,9 @@ pub struct EncodeParams {
     pub end_seconds: f64,
     pub bitrate_kbps: i32,
     pub audio_kbps: i32,
+    /// 1 for mono. A thin track sounds better as one good channel than two bad.
+    pub audio_channels: u8,
+    pub audio_sample_rate: u32,
     pub resolution: (u32, u32),
     pub encoder: String,
     pub max_fps: u32,
@@ -137,8 +140,15 @@ pub fn build_encode_command(params: &EncodeParams) -> Vec<String> {
         args.push(nvenc_preset(params.speed_quality).to_string());
     }
 
+    // `-b:v` alone is only an average, so a complex scene can overshoot. The
+    // cap keeps peaks in check, but pinning maxrate to the average made the
+    // encoder undershoot badly and waste quality, so it gets some headroom.
     args.push("-b:v".to_string());
     args.push(format!("{}k", params.bitrate_kbps));
+    args.push("-maxrate".to_string());
+    args.push(format!("{}k", (params.bitrate_kbps * 3 / 2).max(1)));
+    args.push("-bufsize".to_string());
+    args.push(format!("{}k", (params.bitrate_kbps * 2).max(1)));
 
     args.push("-vf".to_string());
     args.push(format!(
@@ -154,6 +164,12 @@ pub fn build_encode_command(params: &EncodeParams) -> Vec<String> {
         args.push("aac".to_string());
         args.push("-b:a".to_string());
         args.push(format!("{}k", params.audio_kbps));
+        args.push("-ac".to_string());
+        args.push(params.audio_channels.max(1).to_string());
+        if params.audio_sample_rate > 0 {
+            args.push("-ar".to_string());
+            args.push(params.audio_sample_rate.to_string());
+        }
     } else {
         args.push("-an".to_string());
     }

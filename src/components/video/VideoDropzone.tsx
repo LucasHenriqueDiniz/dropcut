@@ -3,7 +3,7 @@ import { Button } from '../ui/Button';
 import { open } from '@tauri-apps/plugin-dialog';
 import { UploadCloud, Video } from 'lucide-react';
 import { ACCEPTED_VIDEO_DESCRIPTION, ACCEPTED_VIDEO_EXTENSIONS, isAcceptedVideoPath, unsupportedVideoMessage } from '../../lib/videoFiles';
-import { useTranslation } from '../../lib/LocaleProvider';
+import { useTranslation } from '../../lib/locale';
 
 type Props = { onSelect: (path: string) => void };
 

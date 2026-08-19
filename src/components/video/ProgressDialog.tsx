@@ -1,13 +1,12 @@
 import type { ProgressStatus } from '../../lib/video';
 import { CheckCircle2, Clapperboard, FolderOpen, Loader2, X, XCircle } from 'lucide-react';
 import { formatBytes } from '../../lib/format';
-import { useTranslation } from '../../lib/LocaleProvider';
+import { useTranslation } from '../../lib/locale';
 
 const RING_CIRCUMFERENCE = 2 * Math.PI * 35;
 
 function ProgressRing({ pct, done, error }: { pct: number; done: boolean; error: boolean }) {
   const offset = RING_CIRCUMFERENCE * (1 - pct / 100);
-  const t = useTranslation();
 
   return (
     <div className="relative size-24 shrink-0">
@@ -29,7 +28,6 @@ function ProgressRing({ pct, done, error }: { pct: number; done: boolean; error:
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         {!done && !error ? <Loader2 size={14} className="mb-1 animate-spin text-[#4fc3a1]" /> : null}
         <span className="font-mono text-[20px] font-semibold leading-none text-white">{Math.round(pct)}%</span>
-        <span className="mt-1 text-[9px] uppercase tracking-[0.16em] text-white/35">{t('progress.of100')}</span>
       </div>
     </div>
   );
@@ -39,6 +37,8 @@ type Props = {
   open: boolean;
   status: ProgressStatus;
   progress: number;
+  /** Which pass the backend is on, so the label is stated rather than guessed. */
+  stage?: string;
   outputPath?: string | null;
   inputSizeBytes?: number | null;
   outputSizeBytes?: number | null;
@@ -47,7 +47,7 @@ type Props = {
   compact?: boolean;
 };
 
-export function ProgressDialog({ open, status, progress, outputPath, inputSizeBytes, outputSizeBytes, onClose, onOpenFolder, compact = false }: Props) {
+export function ProgressDialog({ open, status, progress, stage, outputPath, inputSizeBytes, outputSizeBytes, onClose, onOpenFolder, compact = false }: Props) {
   const t = useTranslation();
 
   if (!open) return null;
@@ -58,7 +58,14 @@ export function ProgressDialog({ open, status, progress, outputPath, inputSizeBy
   const safeProgress = isDone ? 100 : Math.max(0, Math.min(Number.isFinite(progress) ? progress : 0, 100));
   const percent = Math.round(safeProgress);
   const isPreparing = !isDone && !isError && percent <= 0;
-  const currentStep = isDone ? t('progress.finalized') : isError ? t('progress.interrupted') : isPreparing ? t('progress.preparingExport') : t('progress.encodingFrames');
+  const stageLabel = stage === 'adjusting' ? t('progress.stageAdjusting') : t('progress.stageEncoding');
+  const currentStep = isDone
+    ? t('progress.finalized')
+    : isError
+      ? t('progress.interrupted')
+      : isPreparing
+        ? t('progress.preparingExport')
+        : stageLabel;
   const hasSizeSummary = Boolean(isDone && inputSizeBytes != null && outputSizeBytes != null);
   const savedRatio = hasSizeSummary && inputSizeBytes && outputSizeBytes ? Math.max(0, 1 - outputSizeBytes / inputSizeBytes) : 0;
   const savedPercent = Math.round(savedRatio * 100);
@@ -69,11 +76,9 @@ export function ProgressDialog({ open, status, progress, outputPath, inputSizeBy
     ? t('progress.compressedReady')
     : isError
       ? status
-      : percent < 30
+      : isPreparing
         ? t('progress.startingStage')
-        : percent < 90
-          ? t('progress.encodingStage')
-          : t('progress.finalizingStage');
+        : stageLabel;
 
   if (compact) {
     return (
@@ -102,7 +107,7 @@ export function ProgressDialog({ open, status, progress, outputPath, inputSizeBy
             <div className="min-w-0 flex-1">
               <div className="mb-2 flex items-center justify-between text-[11px] text-white/45">
                 <span>{currentStep}</span>
-                <span className="font-mono text-[#4fc3a1]">{percent}/100</span>
+                <span className="font-mono text-[#4fc3a1]">{percent}%</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full border border-white/10 bg-white/[0.06]">
                 <div className={`h-full rounded-full transition-all duration-300 ${isError ? 'bg-red-400' : isDone ? 'bg-emerald-400' : 'bg-gradient-to-r from-[#1d9e75] to-[#8b5cf6]'}`} style={{ width: `${percent}%` }} />
@@ -221,7 +226,7 @@ export function ProgressDialog({ open, status, progress, outputPath, inputSizeBy
                 <div className="min-w-0">
                   <div className="mb-2 flex items-center justify-between text-xs text-white/50">
                     <span>{currentStep}</span>
-                    <span className="font-mono text-[#4fc3a1]">{percent}/100</span>
+                    <span className="font-mono text-[#4fc3a1]">{percent}%</span>
                   </div>
                   <div className="h-3 overflow-hidden rounded-full border border-white/10 bg-white/[0.06]">
                     <div className={`h-full rounded-full transition-all duration-300 ${isError ? 'bg-red-400' : 'bg-gradient-to-r from-[#1d9e75] to-[#8b5cf6]'}`} style={{ width: `${percent}%` }} />
